@@ -10,20 +10,18 @@ const fs = require('fs');
 
 const app = express();
 
-// Environment Variables with defaults
-const {
-  PORT = 3000,
-  MONGODB_URI = 'mongodb://localhost:27017/soniqai',
-  SESSION_SECRET = 'soniqai-secret-key-2024',
-  ADMIN_PASSWORD = 'admin123',
-  NODE_ENV = 'development',
-  UPLOAD_DIR = 'uploads',
-  MAX_FILE_SIZE = 52428800, // 50MB in bytes
-  SESSION_MAX_AGE = 86400000, // 24 hours in milliseconds
-  BCRYPT_ROUNDS = 12,
-  MAX_ACTIVE_SESSIONS = 2,
-  CODE_EXPIRY_HOURS = 24
-} = process.env;
+// HARDCODED VALUES - NO ENV DEPENDENCY
+const PORT = 3000;
+const MONGODB_URI = 'mongodb://localhost:27017/soniqai';
+const SESSION_SECRET = 'soniqai-secret-key-2024';
+const ADMIN_PASSWORD = 'admin123'; // HARDCODED
+const NODE_ENV = 'development';
+const UPLOAD_DIR = 'uploads';
+const MAX_FILE_SIZE = 52428800;
+const SESSION_MAX_AGE = 86400000;
+const BCRYPT_ROUNDS = 12;
+const MAX_ACTIVE_SESSIONS = 2;
+const CODE_EXPIRY_HOURS = 24;
 
 // Initialize UUID - simplified version
 let { v4: uuidv4 } = require('uuid');
@@ -49,9 +47,9 @@ app.use(session({
     mongoUrl: MONGODB_URI
   }),
   cookie: {
-    secure: NODE_ENV === 'production',
+    secure: false, // ALWAYS FALSE FOR DEVELOPMENT
     httpOnly: true,
-    maxAge: parseInt(SESSION_MAX_AGE)
+    maxAge: SESSION_MAX_AGE
   }
 }));
 
@@ -94,7 +92,7 @@ const oneTimeCodeSchema = new mongoose.Schema({
   plan: { type: String, enum: ['normal', 'abundance'], required: true },
   used: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
-  expiresAt: { type: Date, default: () => new Date(Date.now() + (parseInt(CODE_EXPIRY_HOURS) * 60 * 60 * 1000)), expires: 0 }
+  expiresAt: { type: Date, default: () => new Date(Date.now() + (CODE_EXPIRY_HOURS * 60 * 60 * 1000)), expires: 0 }
 });
 
 const User = mongoose.model('User', userSchema);
@@ -179,7 +177,7 @@ const upload = multer({
       cb(new Error('Only audio files are allowed (MP3, WAV, FLAC, M4A, AAC)'));
     }
   },
-  limits: { fileSize: parseInt(MAX_FILE_SIZE) }
+  limits: { fileSize: MAX_FILE_SIZE }
 });
 
 // Helper function to generate one-time codes
@@ -198,13 +196,13 @@ async function manageUserSessions(userId, currentSessionId) {
   if (!user) return;
 
   user.activeSessions = user.activeSessions.filter(session => 
-    Date.now() - session.createdAt.getTime() < parseInt(SESSION_MAX_AGE)
+    Date.now() - session.createdAt.getTime() < SESSION_MAX_AGE
   );
 
-  if (user.activeSessions.length >= parseInt(MAX_ACTIVE_SESSIONS)) {
+  if (user.activeSessions.length >= MAX_ACTIVE_SESSIONS) {
     user.activeSessions = user.activeSessions
       .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, parseInt(MAX_ACTIVE_SESSIONS) - 1);
+      .slice(0, MAX_ACTIVE_SESSIONS - 1);
   }
 
   user.activeSessions.push({
@@ -284,7 +282,7 @@ app.post('/signup', async (req, res) => {
       return res.render('signup', { error: 'User already exists' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, parseInt(BCRYPT_ROUNDS));
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     const user = new User({
       email,
@@ -338,56 +336,25 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// FIXED Admin login route
-app.post('/admin-login', async (req, res) => {
-  try {
-    console.log('=== ADMIN LOGIN ATTEMPT ===');
-    console.log('Request body:', req.body);
-    console.log('Session before login:', { admin: req.session.admin, id: req.session.id });
-    console.log('Headers:', req.headers);
-    
-    const { password } = req.body;
-
-    // Validate password exists
-    if (!password) {
-      console.log('No password provided');
-      return res.render('admin-login', { error: 'Password is required' });
-    }
-
-    console.log('Password received:', `"${password}"`);
-    console.log('Expected password:', `"${ADMIN_PASSWORD}"`);
-    console.log('Passwords match:', password === ADMIN_PASSWORD);
-
-    // Check password
-    if (password.trim() !== ADMIN_PASSWORD.trim()) {
-      console.log('Invalid password attempt');
-      return res.render('admin-login', { error: 'Invalid admin password' });
-    }
-
-    console.log('Password validation passed');
-
-    // Set admin flag in session
+// SUPER SIMPLE ADMIN LOGIN - NO COMPLEXITY
+app.post('/admin-login', (req, res) => {
+  console.log('=== ADMIN LOGIN START ===');
+  console.log('Body:', req.body);
+  
+  const password = req.body.password;
+  console.log('Password received:', password);
+  console.log('Expected:', 'admin123');
+  
+  // DIRECT STRING COMPARISON
+  if (password === 'admin123') {
+    console.log('PASSWORD MATCH!');
     req.session.admin = true;
-    console.log('Admin session set to:', req.session.admin);
-
-    // Save session explicitly and redirect
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.render('admin-login', { error: 'Session error occurred' });
-      }
-      
-      console.log('Session saved successfully');
-      console.log('Final session state:', { admin: req.session.admin, id: req.session.id });
-      console.log('Redirecting to /admin-dashboard');
-      
-      return res.redirect('/admin-dashboard');
-    });
-
-  } catch (error) {
-    console.error('Admin login error:', error);
-    console.error('Stack trace:', error.stack);
-    res.render('admin-login', { error: 'Server error occurred' });
+    console.log('Session admin set to:', req.session.admin);
+    console.log('Redirecting to /admin-dashboard');
+    return res.redirect('/admin-dashboard');
+  } else {
+    console.log('PASSWORD MISMATCH');
+    return res.render('admin-login', { error: 'Invalid admin password' });
   }
 });
 
@@ -412,7 +379,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
   }
 });
 
-// FIXED Admin dashboard route (protected)
+// Admin dashboard route (protected)
 app.get('/admin-dashboard', requireAdmin, async (req, res) => {
   try {
     console.log('Admin dashboard access granted');
