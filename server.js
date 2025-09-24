@@ -7,14 +7,6 @@ const MongoStore = require('connect-mongo');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-// Dynamic import for uuid - will be loaded async
-let uuidv4;
-
-// Initialize UUID
-(async () => {
-  const uuid = await import('uuid');
-  uuidv4 = uuid.v4;
-})();
 
 const app = express();
 
@@ -32,6 +24,9 @@ const {
   MAX_ACTIVE_SESSIONS = 2,
   CODE_EXPIRY_HOURS = 24
 } = process.env;
+
+// Initialize UUID - simplified version
+let { v4: uuidv4 } = require('uuid');
 
 // MongoDB Connection
 mongoose.connect(MONGODB_URI, {
@@ -115,9 +110,12 @@ const requireAuth = (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
+  console.log('Admin check - Session admin:', req.session.admin);
   if (!req.session.admin) {
+    console.log('Admin access denied, redirecting to admin-login');
     return res.redirect('/admin-login');
   }
+  console.log('Admin access granted');
   next();
 };
 
@@ -186,7 +184,6 @@ const upload = multer({
 
 // Helper function to generate one-time codes
 function generateOneTimeCode() {
-  // Generate a proper 12-character alphanumeric code
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 12; i++) {
@@ -200,19 +197,16 @@ async function manageUserSessions(userId, currentSessionId) {
   const user = await User.findById(userId);
   if (!user) return;
 
-  // Remove expired sessions (older than SESSION_MAX_AGE)
   user.activeSessions = user.activeSessions.filter(session => 
     Date.now() - session.createdAt.getTime() < parseInt(SESSION_MAX_AGE)
   );
 
-  // If more than MAX_ACTIVE_SESSIONS, remove oldest ones
   if (user.activeSessions.length >= parseInt(MAX_ACTIVE_SESSIONS)) {
     user.activeSessions = user.activeSessions
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, parseInt(MAX_ACTIVE_SESSIONS) - 1);
   }
 
-  // Add current session
   user.activeSessions.push({
     sessionId: currentSessionId,
     createdAt: new Date()
@@ -245,9 +239,12 @@ app.get('/login', (req, res) => {
 });
 
 app.get('/admin-login', (req, res) => {
+  console.log('GET /admin-login - Session admin:', req.session.admin);
   if (req.session.admin) {
+    console.log('Admin already logged in, redirecting to dashboard');
     return res.redirect('/admin-dashboard');
   }
+  console.log('Rendering admin login page');
   res.render('admin-login', { error: null });
 });
 
@@ -277,22 +274,18 @@ app.post('/signup', async (req, res) => {
   try {
     const { email, password, oneTimeCode, name } = req.body;
 
-    // Check if one-time code exists and is valid
     const code = await OneTimeCode.findOne({ code: oneTimeCode, used: false });
     if (!code) {
       return res.render('signup', { error: 'Invalid or expired one-time code' });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.render('signup', { error: 'User already exists' });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, parseInt(BCRYPT_ROUNDS));
 
-    // Create user
     const user = new User({
       email,
       password: hashedPassword,
@@ -302,7 +295,6 @@ app.post('/signup', async (req, res) => {
 
     await user.save();
 
-    // Mark code as used
     code.used = true;
     await code.save();
 
@@ -328,7 +320,6 @@ app.post('/login', async (req, res) => {
       return res.render('login', { error: 'Invalid credentials' });
     }
 
-    // Manage sessions
     const sessionId = uuidv4();
     req.session.sessionId = sessionId;
     await manageUserSessions(user._id, sessionId);
@@ -347,20 +338,56 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Admin login route
+// FIXED Admin login route
 app.post('/admin-login', async (req, res) => {
   try {
+    console.log('=== ADMIN LOGIN ATTEMPT ===');
+    console.log('Request body:', req.body);
+    console.log('Session before login:', { admin: req.session.admin, id: req.session.id });
+    console.log('Headers:', req.headers);
+    
     const { password } = req.body;
 
-    if (password !== ADMIN_PASSWORD) {
+    // Validate password exists
+    if (!password) {
+      console.log('No password provided');
+      return res.render('admin-login', { error: 'Password is required' });
+    }
+
+    console.log('Password received:', `"${password}"`);
+    console.log('Expected password:', `"${ADMIN_PASSWORD}"`);
+    console.log('Passwords match:', password === ADMIN_PASSWORD);
+
+    // Check password
+    if (password.trim() !== ADMIN_PASSWORD.trim()) {
+      console.log('Invalid password attempt');
       return res.render('admin-login', { error: 'Invalid admin password' });
     }
 
+    console.log('Password validation passed');
+
+    // Set admin flag in session
     req.session.admin = true;
-    res.redirect('/admin-dashboard');
+    console.log('Admin session set to:', req.session.admin);
+
+    // Save session explicitly and redirect
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.render('admin-login', { error: 'Session error occurred' });
+      }
+      
+      console.log('Session saved successfully');
+      console.log('Final session state:', { admin: req.session.admin, id: req.session.id });
+      console.log('Redirecting to /admin-dashboard');
+      
+      return res.redirect('/admin-dashboard');
+    });
+
   } catch (error) {
-    console.error(error);
-    res.render('admin-login', { error: 'Server error' });
+    console.error('Admin login error:', error);
+    console.error('Stack trace:', error.stack);
+    res.render('admin-login', { error: 'Server error occurred' });
   }
 });
 
@@ -385,15 +412,18 @@ app.get('/dashboard', requireAuth, async (req, res) => {
   }
 });
 
-// Admin dashboard route (protected)
+// FIXED Admin dashboard route (protected)
 app.get('/admin-dashboard', requireAdmin, async (req, res) => {
   try {
+    console.log('Admin dashboard access granted');
     const songs = await Song.find().sort({ uploadedAt: -1 });
     const codes = await OneTimeCode.find({ used: false }).sort({ createdAt: -1 });
     const usedCodes = await OneTimeCode.find({ used: true }).sort({ createdAt: -1 }).limit(10);
+    
+    console.log('Rendering admin dashboard with data');
     res.render('admin-dashboard', { songs, codes, usedCodes });
   } catch (error) {
-    console.error(error);
+    console.error('Admin dashboard error:', error);
     res.status(500).send('Server error');
   }
 });
@@ -460,7 +490,6 @@ app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
     } catch (error) {
       console.error('Database error:', error);
       
-      // Delete uploaded file if database save fails
       if (req.file) {
         const filePath = path.join(__dirname, UPLOAD_DIR, req.file.filename);
         if (fs.existsSync(filePath)) {
@@ -481,7 +510,6 @@ app.delete('/admin/delete-song/:id', apiRequireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    // Delete file from disk
     const filePath = path.join(__dirname, UPLOAD_DIR, song.filename);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
@@ -503,7 +531,6 @@ app.get('/api/song/:id', apiRequireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    // Check if user has access to this song based on plan
     let hasAccess = false;
     if (song.plan === 'both') {
       hasAccess = true;
@@ -569,21 +596,18 @@ app.get('/stream/:id', apiRequireAuth, async (req, res) => {
   }
 });
 
-// Demo song endpoint (no authentication required for demo)
+// Demo song endpoint
 app.get('/api/demo-song', async (req, res) => {
   try {
-    // Get a random song from the database for demo purposes
     const songs = await Song.find({ plan: { $in: ['both', 'normal'] } }).limit(10);
     
     if (songs.length === 0) {
       return res.status(404).json({ error: 'No demo songs available' });
     }
     
-    // Select a random song from available songs
     const randomIndex = Math.floor(Math.random() * songs.length);
     const demoSong = songs[randomIndex];
     
-    // Return basic song info (no sensitive data)
     res.json({
       _id: demoSong._id,
       title: demoSong.title,
@@ -599,7 +623,7 @@ app.get('/api/demo-song', async (req, res) => {
   }
 });
 
-// Demo stream endpoint (limited access for demo purposes)
+// Demo stream endpoint
 app.get('/demo-stream/:id', async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -607,7 +631,6 @@ app.get('/demo-stream/:id', async (req, res) => {
       return res.status(404).send('Demo song not found');
     }
 
-    // Only allow streaming of 'both' or 'normal' plan songs for demo
     if (song.plan !== 'both' && song.plan !== 'normal') {
       return res.status(403).send('Demo access denied');
     }
@@ -620,9 +643,7 @@ app.get('/demo-stream/:id', async (req, res) => {
     const stat = fs.statSync(filePath);
     const fileSize = stat.size;
     const range = req.headers.range;
-
-    // Limit demo streaming to first 60 seconds (approximate)
-    const maxBytes = Math.min(fileSize, fileSize * 0.3); // Limit to ~30% of file
+    const maxBytes = Math.min(fileSize, fileSize * 0.3);
 
     if (range) {
       const parts = range.replace(/bytes=/, "").split("-");
@@ -665,15 +686,11 @@ app.get('/admin/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Initialize UUID and start server
-(async () => {
-  const uuid = await import('uuid');
-  uuidv4 = uuid.v4;
-  
-  app.listen(PORT, () => {
-    console.log(`SoniqAI server running on port ${PORT}`);
-    console.log(`Environment: ${NODE_ENV}`);
-    console.log(`MongoDB URI: ${MONGODB_URI}`);
-    console.log(`Upload Directory: ${UPLOAD_DIR}`);
-  });
-})();
+// Start server
+app.listen(PORT, () => {
+  console.log(`SoniqAI server running on port ${PORT}`);
+  console.log(`Environment: ${NODE_ENV}`);
+  console.log(`MongoDB URI: ${MONGODB_URI}`);
+  console.log(`Upload Directory: ${UPLOAD_DIR}`);
+  console.log(`Admin Password: ${ADMIN_PASSWORD}`);
+});
