@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Access - SoniqAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-primary: #C9A961;
+            --gold-accent: #E4C988;
+            --gold-bright: #F2E7A7;
+            --gold-dark: #B8985A;
+            --navy-deep: #0B0D17;
+            --navy-medium: #151922;
+            --navy-light: #1F2332;
+            --purple-dark: #1A0B2E;
+            --purple-medium: #2D1B4E;
+            --black-rich: #000000;
+            --white-pure: #FFFFFF;
+            --white-soft: #F8F9FA;
+            --gray-light: #8892A6;
+            --gray-medium: #5C6B7D;
+            --gray-dark: #404854;
+            --surface-glass: rgba(255, 255, 255, 0.02);
+            --surface-glass-hover: rgba(255, 255, 255, 0.05);
+            --surface-glass-strong: rgba(255, 255, 255, 0.08);
+            --border-glass: rgba(201, 169, 97, 0.12);
+            --border-glass-hover: rgba(201, 169, 97, 0.25);
+            --border-glass-strong: rgba(201, 169, 97, 0.35);
+            --error-color: #EF4444;
+            --warning-color: #F59E0B;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--navy-deep);
+            color: var(--white-pure);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Background System */
+        .background-system {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2;
+            background: linear-gradient(135deg, var(--navy-deep) 0%, var(--purple-dark) 50%, var(--navy-medium) 100%);
+        }
+
+        .mesh-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(201, 169, 97, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(45, 27, 78, 0.12) 0%, transparent 50%);
+            animation: meshFloat 20s ease-in-out infinite;
+        }
+
+        /* Auth Container */
+        .auth-container {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 40px;
+            background: var(--surface-glass-strong);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            backdrop-filter: blur(24px);
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .admin-shield {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--warning-color), var(--gold-accent));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
+        }
+
+        .auth-logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-bright) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .auth-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--white-pure);
+        }
+
+        .auth-subtitle {
+            font-size: 14px;
+            color: var(--gray-light);
+            font-weight: 300;
+        }
+
+        .security-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .warning-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--warning-color);
+            margin-bottom: 8px;
+        }
+
+        .warning-text {
+            font-size: 12px;
+            color: var(--gray-light);
+            line-height: 1.5;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gold-accent);
+        }
+
+        .form-input {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-size: 16px;
+            color: var(--white-pure);
+            font-family: inherit;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(12px);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--warning-color);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+            background: var(--surface-glass-hover);
+        }
+
+        .form-input::placeholder {
+            color: var(--gray-medium);
+        }
+
+        .auth-button {
+            background: linear-gradient(135deg, var(--warning-color), var(--gold-accent));
+            color: var(--black-rich);
+            padding: 16px 32px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+            box-shadow: 0 12px 40px rgba(245, 158, 11, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 48px rgba(245, 158, 11, 0.35);
+        }
+
+        .auth-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--error-color);
+            font-size: 14px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .back-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: var(--gray-light);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: var(--gold-accent);
+        }
+
+        .admin-features {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-glass);
+        }
+
+        .features-title {
+            font-size: 12px;
+            color: var(--gray-medium);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--gray-light);
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-icon {
+            width: 16px;
+            height: 16px;
+            background: var(--gold-primary);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: var(--black-rich);
+        }
+
+        /* Animations */
+        @keyframes meshFloat {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(15px, -15px) rotate(0.5deg); }
+            66% { transform: translate(-15px, 10px) rotate(-0.5deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .auth-container {
+                margin: 20px;
+                padding: 32px 24px;
+            }
+            
+            .features-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background System -->
+    <div class="background-system"></div>
+    <div class="mesh-gradient"></div>
+
+    <a href="/" class="back-link">← Back to Home</a>
+
+    <div class="auth-container">
+        <div class="auth-header">
+            <div class="admin-shield">🛡️</div>
+            <div class="auth-logo">SoniqAI</div>
+            <h1 class="auth-title">Administrator Access</h1>
+            <p class="auth-subtitle">Secure management portal</p>
+        </div>
+
+        <div class="security-warning">
+            <div class="warning-title">⚠️ Restricted Access</div>
+            <div class="warning-text">
+                This area is restricted to authorized administrators only. 
+                All access attempts are logged and monitored.
+            </div>
+        </div>
+
+        <% if (error) { %>
+            <div class="error-message">
+                <%= error %>
+            </div>
+        <% } %>
+
+        <form class="auth-form" method="POST" action="/admin-login">
+            <div class="form-group">
+                <label class="form-label" for="password">Admin Password</label>
+                <input type="password" id="password" name="password" class="form-input" placeholder="Enter admin password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="auth-button">Access Dashboard</button>
+        </form>
+
+        <div class="admin-features">
+            <div class="features-title">Admin Capabilities</div>
+            <div class="features-list">
+                <div class="feature-item">
+                    <div class="feature-icon">🎵</div>
+                    <span>Manage Music</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">👥</div>
+                    <span>User Access</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔑</div>
+                    <span>Generate Codes</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <span>Analytics</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Security enhancements
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+                e.preventDefault();
+            }
+        });
+
+        // Form validation
+        document.querySelector('.auth-form').addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+
+            if (!password.trim()) {
+                e.preventDefault();
+                alert('Please enter the admin password');
+                return;
+            }
+
+            if (password.length < 3) {
+                e.preventDefault();
+                alert('Invalid password format');
+                return;
+            }
+        });
+
+        // Focus on password field
+        document.getElementById('password').focus();
+
+        // Smooth animations
+        const inputs = document.querySelectorAll('.form-input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'translateY(-2px)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body>
+</html>

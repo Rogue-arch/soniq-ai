@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Library - SoniqAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-primary: #C9A961;
+            --gold-accent: #E4C988;
+            --gold-bright: #F2E7A7;
+            --gold-dark: #B8985A;
+            --navy-deep: #0B0D17;
+            --navy-medium: #151922;
+            --navy-light: #1F2332;
+            --purple-dark: #1A0B2E;
+            --purple-medium: #2D1B4E;
+            --black-rich: #000000;
+            --white-pure: #FFFFFF;
+            --white-soft: #F8F9FA;
+            --gray-light: #8892A6;
+            --gray-medium: #5C6B7D;
+            --gray-dark: #404854;
+            --surface-glass: rgba(255, 255, 255, 0.02);
+            --surface-glass-hover: rgba(255, 255, 255, 0.05);
+            --surface-glass-strong: rgba(255, 255, 255, 0.08);
+            --border-glass: rgba(201, 169, 97, 0.12);
+            --border-glass-hover: rgba(201, 169, 97, 0.25);
+            --border-glass-strong: rgba(201, 169, 97, 0.35);
+            --success-color: #22C55E;
+            --warning-color: #F59E0B;
+            --error-color: #EF4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--navy-deep);
+            color: var(--white-pure);
+            line-height: 1.6;
+            font-weight: 300;
+        }
+
+        /* Background System */
+        .background-system {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2;
+            background: linear-gradient(135deg, var(--navy-deep) 0%, var(--purple-dark) 50%, var(--navy-medium) 100%);
+        }
+
+        .mesh-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(201, 169, 97, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(45, 27, 78, 0.08) 0%, transparent 50%);
+        }
+
+        /* Header */
+        .header {
+            background: var(--surface-glass-strong);
+            border-bottom: 1px solid var(--border-glass);
+            backdrop-filter: blur(24px);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-bright) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .user-greeting {
+            font-size: 14px;
+            color: var(--gray-light);
+            font-weight: 300;
+        }
+
+        .user-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--white-pure);
+        }
+
+        .plan-badge {
+            display: inline-flex;
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-accent));
+            color: var(--black-rich);
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logout-btn {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--white-pure);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(12px);
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: var(--surface-glass-hover);
+            border-color: var(--border-glass-hover);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 48px;
+            min-height: calc(100vh - 100px);
+        }
+
+        /* Music Player */
+        .player-container {
+            background: var(--surface-glass-strong);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 48px;
+            backdrop-filter: blur(24px);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .player-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--white-pure);
+        }
+
+        .player-controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .control-btn {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: var(--white-pure);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(12px);
+        }
+
+        .control-btn:hover {
+            background: var(--surface-glass-hover);
+            border-color: var(--border-glass-hover);
+        }
+
+        .control-btn.active {
+            background: var(--gold-primary);
+            color: var(--black-rich);
+            border-color: var(--gold-primary);
+        }
+
+        .now-playing {
+            background: rgba(201, 169, 97, 0.1);
+            border: 1px solid rgba(201, 169, 97, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .now-playing.active {
+            display: block;
+        }
+
+        .now-playing-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gold-accent);
+            margin-bottom: 4px;
+        }
+
+        .now-playing-artist {
+            font-size: 14px;
+            color: var(--gray-light);
+            margin-bottom: 16px;
+        }
+
+        .audio-player {
+            width: 100%;
+            background: var(--surface-glass);
+            border-radius: 8px;
+        }
+
+        .audio-player::-webkit-media-controls-panel {
+            background: var(--surface-glass);
+        }
+
+        /* Disable download attribute and right-click */
+        .audio-player::-webkit-media-controls-download-button {
+            display: none;
+        }
+
+        .audio-player::-webkit-media-controls-fullscreen-button {
+            display: none;
+        }
+
+        /* Library Section */
+        .library-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .library-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--white-pure);
+        }
+
+        .library-stats {
+            display: flex;
+            gap: 24px;
+            font-size: 14px;
+            color: var(--gray-light);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-number {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gold-accent);
+        }
+
+        /* Songs Grid */
+        .songs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .song-card {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(12px);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            /* Disable right-click context menu */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .song-card:hover {
+            transform: translateY(-4px);
+            background: var(--surface-glass-hover);
+            border-color: var(--border-glass-hover);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .song-card.playing {
+            border-color: var(--gold-primary);
+            background: rgba(201, 169, 97, 0.1);
+        }
+
+        .song-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .song-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-accent));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--black-rich);
+        }
+
+        .song-plan-badge {
+            background: var(--surface-glass-strong);
+            border: 1px solid var(--border-glass);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 10px;
+            color: var(--gold-accent);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .song-info {
+            margin-bottom: 16px;
+        }
+
+        .song-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--white-pure);
+            margin-bottom: 4px;
+        }
+
+        .song-artist {
+            font-size: 14px;
+            color: var(--gray-light);
+            margin-bottom: 8px;
+        }
+
+        .song-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--gray-medium);
+        }
+
+        .song-description {
+            font-size: 13px;
+            color: var(--gray-light);
+            line-height: 1.5;
+            margin-bottom: 16px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .song-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .song-btn {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: var(--white-pure);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(8px);
+        }
+
+        .song-btn:hover {
+            background: var(--surface-glass-hover);
+            border-color: var(--border-glass-hover);
+        }
+
+        .song-btn.primary {
+            background: var(--gold-primary);
+            color: var(--black-rich);
+            border-color: var(--gold-primary);
+        }
+
+        .song-btn.primary:hover {
+            background: var(--gold-dark);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--gray-light);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 24px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--white-pure);
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-container,
+            .main-container {
+                padding: 16px 24px;
+            }
+
+            .library-header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .library-stats {
+                justify-content: center;
+            }
+
+            .songs-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .player-header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .user-info {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background System -->
+    <div class="background-system"></div>
+    <div class="mesh-gradient"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="logo">SoniqAI</div>
+                <div class="user-info">
+                    <div class="user-greeting">Welcome back,</div>
+                    <div class="user-name"><%= user.name || user.email.split('@')[0] %></div>
+                    <div class="plan-badge"><%= user.plan %> Plan</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Music Player -->
+        <div class="player-container">
+            <div class="player-header">
+                <h2 class="player-title">Manifestation Music Player</h2>
+                <div class="player-controls">
+                    <button class="control-btn" id="shuffleBtn">🔀 Shuffle</button>
+                    <button class="control-btn" id="playAllBtn">▶️ Play All</button>
+                </div>
+            </div>
+            
+            <div class="now-playing" id="nowPlaying">
+                <div class="now-playing-title" id="currentTitle">No song selected</div>
+                <div class="now-playing-artist" id="currentArtist"></div>
+                <audio class="audio-player" id="audioPlayer" controls style="display: none;" controlsList="nodownload nofullscreen noremoteplayback">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+        </div>
+
+        <!-- Library Header -->
+        <div class="library-header">
+            <h1 class="library-title">Your Music Library</h1>
+            <div class="library-stats">
+                <div class="stat-item">
+                    <div class="stat-number"><%= songs.length %></div>
+                    <div>Total Tracks</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number"><%= user.plan === 'abundance' ? 'Premium' : 'Standard' %></div>
+                    <div>Access Level</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Songs Grid -->
+        <% if (songs && songs.length > 0) { %>
+            <div class="songs-grid" id="songsGrid">
+                <% songs.forEach(song => { %>
+                    <div class="song-card" data-song-id="<%= song._id %>">
+                        <div class="song-header">
+                            <div class="song-icon">🎵</div>
+                            <div class="song-plan-badge"><%= song.plan %></div>
+                        </div>
+                        <div class="song-info">
+                            <div class="song-title"><%= song.title %></div>
+                            <div class="song-artist"><%= song.artist %></div>
+                            <div class="song-meta">
+                                <span><%= song.duration || 'Unknown' %></span>
+                                <span>•</span>
+                                <span><%= song.genre || 'Manifestation' %></span>
+                                <% if (song.album) { %>
+                                    <span>•</span>
+                                    <span><%= song.album %></span>
+                                <% } %>
+                            </div>
+                        </div>
+                        <% if (song.description) { %>
+                            <div class="song-description"><%= song.description %></div>
+                        <% } %>
+                        <div class="song-actions">
+                            <button class="song-btn primary" onclick="playSong('<%= song._id %>')">Play</button>
+                            <button class="song-btn" onclick="showSongDetails('<%= song._id %>')">Details</button>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        <% } else { %>
+            <div class="empty-state">
+                <div class="empty-state-icon">🎵</div>
+                <div class="empty-state-title">No Music Available</div>
+                <div class="empty-state-text">
+                    Your music library is currently empty. Contact your administrator to add manifestation tracks to your collection.
+                </div>
+            </div>
+        <% } %>
+    </div>
+
+    <script>
+        let currentPlaylist = [];
+        let currentIndex = 0;
+        let isShuffled = false;
+        let audioPlayer = document.getElementById('audioPlayer');
+        let nowPlaying = document.getElementById('nowPlaying');
+
+        // Initialize playlist from songs data
+        const songs = <%- JSON.stringify(songs) %>;
+        currentPlaylist = [...songs];
+
+        // Player controls
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const playAllBtn = document.getElementById('playAllBtn');
+
+        // Disable right-click context menu
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Disable certain keyboard shortcuts that could allow access to media
+        document.addEventListener('keydown', function(e) {
+            // Disable F12, Ctrl+Shift+I, Ctrl+U, etc.
+            if (e.keyCode == 123 || // F12
+                (e.ctrlKey && e.shiftKey && e.keyCode == 73) || // Ctrl+Shift+I
+                (e.ctrlKey && e.keyCode == 85)) { // Ctrl+U
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Shuffle functionality
+        shuffleBtn.addEventListener('click', function() {
+            isShuffled = !isShuffled;
+            this.classList.toggle('active', isShuffled);
+            
+            if (isShuffled) {
+                // Shuffle the playlist
+                for (let i = currentPlaylist.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [currentPlaylist[i], currentPlaylist[j]] = [currentPlaylist[j], currentPlaylist[i]];
+                }
+                this.textContent = '🔀 Shuffled';
+            } else {
+                // Reset to original order
+                currentPlaylist = [...songs];
+                this.textContent = '🔀 Shuffle';
+            }
+        });
+
+        // Play all functionality
+        playAllBtn.addEventListener('click', function() {
+            if (currentPlaylist.length > 0) {
+                currentIndex = 0;
+                playSong(currentPlaylist[0]._id);
+            }
+        });
+
+        // Play song function
+        async function playSong(songId) {
+            try {
+                // Find song in playlist
+                const song = currentPlaylist.find(s => s._id === songId);
+                if (!song) return;
+
+                currentIndex = currentPlaylist.findIndex(s => s._id === songId);
+
+                // Update UI
+                updateNowPlaying(song);
+                updateSongCards(songId);
+
+                // Load and play audio
+                audioPlayer.src = `/stream/${songId}`;
+                audioPlayer.style.display = 'block';
+                nowPlaying.classList.add('active');
+                
+                await audioPlayer.play();
+                
+            } catch (error) {
+                console.error('Error playing song:', error);
+                alert('Error playing song. Please try again.');
+            }
+        }
+
+        // Update now playing display
+        function updateNowPlaying(song) {
+            document.getElementById('currentTitle').textContent = song.title;
+            document.getElementById('currentArtist').textContent = `by ${song.artist}`;
+        }
+
+        // Update song card states
+        function updateSongCards(playingSongId) {
+            document.querySelectorAll('.song-card').forEach(card => {
+                if (card.dataset.songId === playingSongId) {
+                    card.classList.add('playing');
+                } else {
+                    card.classList.remove('playing');
+                }
+            });
+        }
+
+        // Show song details
+        function showSongDetails(songId) {
+            const song = songs.find(s => s._id === songId);
+            if (!song) return;
+
+            let details = `
+                Title: ${song.title}
+                Artist: ${song.artist}
+                Duration: ${song.duration || 'Unknown'}
+                Genre: ${song.genre || 'Manifestation'}
+                Plan: ${song.plan}
+            `;
+            
+            if (song.album) details += `\nAlbum: ${song.album}`;
+            if (song.description) details += `\n\nDescription:\n${song.description}`;
+
+            alert(details);
+        }
+
+        // Auto-play next song when current ends
+        audioPlayer.addEventListener('ended', function() {
+            if (currentIndex < currentPlaylist.length - 1) {
+                currentIndex++;
+                playSong(currentPlaylist[currentIndex]._id);
+            } else {
+                // Playlist ended
+                nowPlaying.classList.remove('active');
+                audioPlayer.style.display = 'none';
+                updateSongCards('');
+            }
+        });
+
+        // Error handling for audio
+        audioPlayer.addEventListener('error', function(e) {
+            console.error('Audio error:', e);
+            alert('Error loading audio file');
+        });
+
+        // Enhanced keyboard controls (excluding download shortcuts)
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+                if (audioPlayer.paused) {
+                    audioPlayer.play();
+                } else {
+                    audioPlayer.pause();
+                }
+            }
+        });
+
+        // Initialize
+        console.log(`Loaded ${songs.length} songs for ${user.plan} plan`);
+    </script>
+</body>
+</html>

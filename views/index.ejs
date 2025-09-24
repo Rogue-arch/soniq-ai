@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soniq AI - Transform Your Business</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-primary: #C9A961;
+            --gold-accent: #E4C988;
+            --gold-bright: #F2E7A7;
+            --gold-dark: #B8985A;
+            --navy-deep: #0B0D17;
+            --navy-medium: #151922;
+            --navy-light: #1F2332;
+            --purple-dark: #1A0B2E;
+            --purple-medium: #2D1B4E;
+            --black-rich: #000000;
+            --white-pure: #FFFFFF;
+            --white-soft: #F8F9FA;
+            --gray-light: #8892A6;
+            --gray-medium: #5C6B7D;
+            --gray-dark: #404854;
+            --surface-glass: rgba(255, 255, 255, 0.02);
+            --surface-glass-hover: rgba(255, 255, 255, 0.05);
+            --surface-glass-strong: rgba(255, 255, 255, 0.08);
+            --border-glass: rgba(201, 169, 97, 0.12);
+            --border-glass-hover: rgba(201, 169, 97, 0.25);
+            --border-glass-strong: rgba(201, 169, 97, 0.35);
+            --success-color: #22C55E;
+            --warning-color: #F59E0B;
+            --error-color: #EF4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--navy-deep);
+            color: var(--white-pure);
+            overflow-x: hidden;
+            line-height: 1.6;
+            font-weight: 300;
+        }
+
+        /* Background System */
+        .background-system {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2;
+            background: linear-gradient(135deg, var(--navy-deep) 0%, var(--purple-dark) 50%, var(--navy-medium) 100%);
+        }
+
+        .mesh-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(201, 169, 97, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(45, 27, 78, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(201, 169, 97, 0.05) 0%, transparent 50%);
+            animation: meshFloat 25s ease-in-out infinite;
+        }
+
+        .floating-orbs {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(201, 169, 97, 0.1) 0%, transparent 70%);
+            animation: orbFloat 30s ease-in-out infinite;
+        }
+
+        .orb:nth-child(1) {
+            width: 300px;
+            height: 300px;
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .orb:nth-child(2) {
+            width: 200px;
+            height: 200px;
+            top: 70%;
+            right: 20%;
+            animation-delay: -10s;
+        }
+
+        .orb:nth-child(3) {
+            width: 150px;
+            height: 150px;
+            bottom: 30%;
+            left: 70%;
+            animation-delay: -20s;
+        }
+
+        /* Navigation */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 24px 0;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+        }
+
+        .navbar.scrolled {
+            background: rgba(11, 13, 23, 0.95);
+            backdrop-filter: blur(24px) saturate(180%);
+            border-bottom: 1px solid var(--border-glass);
+            padding: 16px 0;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-bright) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+            cursor: pointer;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--gray-light);
+            text-decoration: none;
+            font-weight: 400;
+            font-size: 15px;
+            letter-spacing: 0.01em;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--white-pure);
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--gold-primary), var(--gold-accent));
+            transition: width 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+        }
+
+        .nav-link:hover::before, .nav-link.active::before {
+            width: 100%;
+        }
+
+        .get-started-btn {
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-accent));
+            color: var(--black-rich);
+            padding: 12px 24px;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+            box-shadow: 0 8px 32px rgba(201, 169, 97, 0.3);
+            border: none;
+            cursor: pointer;
+            letter-spacing: -0.01em;
+        }
+
+        .get-started-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 48px rgba(201, 169, 97, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 120px 48px 0;
+        }
+
+        .hero-container {
+            max-width: 1200px;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface-glass-strong);
+            border: 1px solid var(--border-glass);
+            border-radius: 100px;
+            padding: 8px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gold-accent);
+            margin-bottom: 32px;
+            backdrop-filter: blur(20px);
+            animation: fadeInUp 1s ease 0.2s both;
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(48px, 8vw, 84px);
+            font-weight: 800;
+            line-height: 0.95;
+            margin-bottom: 24px;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, 
+                var(--white-pure) 0%, 
+                var(--gold-accent) 30%, 
+                var(--gold-primary) 60%, 
+                var(--gold-bright) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% 200%;
+            animation: gradientShift 6s ease-in-out infinite, fadeInUp 1s ease 0.4s both;
+        }
+
+        .hero-subtitle {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(18px, 3vw, 22px);
+            font-weight: 500;
+            color: var(--gold-primary);
+            margin-bottom: 24px;
+            letter-spacing: 0.01em;
+            animation: fadeInUp 1s ease 0.6s both;
+        }
+
+        .hero-description {
+            font-size: 18px;
+            line-height: 1.7;
+            color: var(--gray-light);
+            max-width: 640px;
+            margin: 0 auto 48px;
+            font-weight: 300;
+            animation: fadeInUp 1s ease 0.8s both;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 1s ease 1s both;
+            margin-bottom: 80px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-accent));
+            color: var(--black-rich);
+            padding: 16px 32px;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 16px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+            box-shadow: 0 12px 40px rgba(201, 169, 97, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 60px rgba(201, 169, 97, 0.5);
+        }
+
+        .btn-secondary {
+            background: var(--surface-glass-strong);
+            color: var(--white-pure);
+            padding: 16px 32px;
+            border: 1px solid var(--border-glass-hover);
+            border-radius: 100px;
+            font-weight: 500;
+            font-size: 16px;
+            text-decoration: none;
+            transition: all 0.4s ease;
+            backdrop-filter: blur(20px);
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-glass-hover);
+            border-color: var(--gold-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(201, 169, 97, 0.2);
+        }
+
+        /* Demo Music Player */
+        .demo-player {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--surface-glass-strong);
+            border: 1px solid var(--border-glass-hover);
+            border-radius: 24px;
+            padding: 40px;
+            backdrop-filter: blur(24px);
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 1s ease 1.2s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-player::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .demo-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--white-pure);
+            margin-bottom: 8px;
+        }
+
+        .demo-subtitle {
+            font-size: 14px;
+            color: var(--gold-accent);
+            font-weight: 400;
+        }
+
+        .now-playing {
+            background: linear-gradient(135deg, rgba(201, 169, 97, 0.1), rgba(201, 169, 97, 0.05));
+            border: 1px solid rgba(201, 169, 97, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .album-art {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-accent));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .album-art.playing {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .track-info {
+            flex: 1;
+        }
+
+        .track-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--white-pure);
+            margin-bottom: 4px;
+        }
+
+        .track-artist {
+            font-size: 16px;
+            color: var(--gold-accent);
+            margin-bottom: 8px;
+        }
+
+        .track-details {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--gray-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .demo-badge {
+            background: var(--warning-color);
+            color: var(--black-rich);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .play-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .main-play-btn {
+            width: 60px;
+            height: 60px;
+            background: var(--gold-primary);
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 24px;
+            color: var(--black-rich);
+            box-shadow: 0 8px 24px rgba(201, 169, 97, 0.4);
+        }
+
+        .main-play-btn:hover {
+            transform: scale(1.05);
+            background: var(--gold-accent);
+            box-shadow: 0 12px 32px rgba(201, 169, 97, 0.6);
+        }
+
+        .progress-container {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: var(--gray-light);
+            font-weight: 500;
+        }
+
+        .demo-warning {
+            color: var(--warning-color);
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--navy-light);
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+            margin-bottom: 16px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold-primary), var(--gold-accent));
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s linear;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: -3px;
+            width: 12px;
+            height: 12px;
+            background: var(--gold-accent);
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(201, 169, 97, 0.5);
+        }
+
+        .control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--gray-light);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: var(--surface-glass-hover);
+            color: var(--gold-accent);
+            transform: scale(1.1);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .volume-slider {
+            width: 80px;
+            height: 4px;
+            background: var(--navy-light);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .demo-notification {
+            background: var(--surface-glass-strong);
+            border: 1px solid var(--gold-primary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            display: none;
+            animation: slideInUp 0.5s ease;
+        }
+
+        .demo-notification.show {
+            display: block;
+        }
+
+        .notification-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gold-accent);
+            margin-bottom: 8px;
+        }
+
+        .notification-text {
+            font-size: 14px;
+            color: var(--gray-light);
+            margin-bottom: 16px;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .notification-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .notification-btn.primary {
+            background: var(--gold-primary);
+            color: var(--black-rich);
+        }
+
+        .notification-btn.primary:hover {
+            background: var(--gold-accent);
+            transform: translateY(-1px);
+        }
+
+        .notification-btn.secondary {
+            background: var(--surface-glass);
+            color: var(--white-pure);
+            border: 1px solid var(--border-glass);
+        }
+
+        .notification-btn.secondary:hover {
+            background: var(--surface-glass-hover);
+            border-color: var(--border-glass-hover);
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 120px 48px;
+            position: relative;
+        }
+
+        .section-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 32px;
+        }
+
+        .feature-card {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 32px;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+            backdrop-filter: blur(24px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--border-glass-hover);
+            background: var(--surface-glass-hover);
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.2);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-accent));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 24px;
+            transition: transform 0.4s ease;
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .feature-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--white-pure);
+            letter-spacing: -0.01em;
+        }
+
+        .feature-description {
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--gray-light);
+            font-weight: 300;
+        }
+
+        /* Footer */
+        .footer {
+            background: linear-gradient(135deg, var(--navy-deep) 0%, var(--purple-dark) 100%);
+            border-top: 1px solid var(--border-glass);
+            padding: 80px 48px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(201, 169, 97, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(45, 27, 78, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer-top {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 60px;
+            margin-bottom: 60px;
+        }
+
+        .footer-brand {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .footer-logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-bright) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+
+        .footer-tagline {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--gold-accent);
+            margin-bottom: 16px;
+            font-style: italic;
+        }
+
+        .footer-description {
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--gray-light);
+            font-weight: 300;
+            max-width: 400px;
+        }
+
+        .footer-column h4 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--white-pure);
+            margin-bottom: 20px;
+            letter-spacing: -0.01em;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links a {
+            color: var(--gray-light);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 300;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold-accent);
+            padding-left: 4px;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid var(--border-glass);
+            padding-top: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .footer-copyright {
+            font-size: 14px;
+            color: var(--gray-medium);
+            font-weight: 300;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes meshFloat {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(1deg); }
+            66% { transform: translate(-30px, 20px) rotate(-1deg); }
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(20px, -20px) scale(1.05); }
+            66% { transform: translate(-20px, 15px) scale(0.95); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .demo-player {
+                padding: 20px;
+                margin: 0 12px;
+            }
+
+            .album-art {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+
+            .main-play-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+
+            .notification-actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background System -->
+    <div class="background-system"></div>
+    <div class="mesh-gradient"></div>
+    <div class="floating-orbs">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="logo" onclick="window.location.href='/'">Soniq AI</div>
+            <ul class="nav-links">
+                <li><a href="#home" class="nav-link active">Home</a></li>
+                <li><a href="/login" class="nav-link">Login</a></li>
+                <li><a href="/contact" class="nav-link">Contact</a></li>
+            </ul>
+            <a href="#demo" class="get-started-btn">View Demo</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-container">
+            <div class="hero-badge">
+                AI-Powered B2B Music Service Provider
+            </div>
+            <h1 class="hero-title">Transform Your Business with Soniq AI</h1>
+            <h2 class="hero-subtitle">The World's First AI-Powered B2B Music Service Provider Tuned to Attract Abundance and Great Energy</h2>
+            <div class="hero-actions">
+                <a href="#demo" class="btn-primary">View Demo</a>
+                <a href="/contact" class="btn-secondary">Contact for Pricing</a>
+            </div>
+
+            <!-- Demo Music Player -->
+            <div class="demo-player" id="demo">
+                <div class="demo-header">
+                    <h3 class="demo-title">Experience Soniq AI</h3>
+                    <p class="demo-subtitle">Listen to our AI-curated business music</p>
+                </div>
+                
+                <div class="now-playing">
+                    <div class="album-art" id="albumArt">♪</div>
+                    <div class="track-info">
+                        <div class="track-title" id="trackTitle">Loading...</div>
+                        <div class="track-artist" id="trackArtist">Loading...</div>
+                        <div class="track-details">
+                            <span id="trackGenre">Loading...</span>
+                            <span>•</span>
+                            <span id="trackPlan">Loading...</span>
+                            <span>•</span>
+                            <span class="demo-badge">Demo</span>
+                        </div>
+                    </div>
+                    <div class="play-controls">
+                        <button class="main-play-btn" id="mainPlayBtn">▶</button>
+                    </div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="time-display">
+                        <span id="currentTime">0:00</span>
+                        <span class="demo-warning">Demo Preview</span>
+                        <span id="totalTime">0:00</span>
+                    </div>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="control-buttons">
+                        <button class="control-btn" id="prevBtn" disabled>⏮</button>
+                        <button class="control-btn" id="rewindBtn">⏪</button>
+                        <button class="control-btn" id="forwardBtn">⏩</button>
+                        <button class="control-btn" id="nextBtn" disabled>⏭</button>
+                        <div class="volume-control">
+                            <button class="control-btn" id="volumeBtn">🔊</button>
+                            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="demo-notification" id="demoNotification">
+                    <div class="notification-title">Demo Complete!</div>
+                    <div class="notification-text">
+                        Contact us to unlock full tracks and exclusive business music library.
+                    </div>
+                    <div class="notification-actions">
+                        <button class="notification-btn primary" onclick="window.location.href='/contact'">
+                            Contact for Full Access
+                        </button>
+                        <button class="notification-btn secondary" onclick="closeDemoNotification()">
+                            Continue Browsing
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Audio Element -->
+                <audio id="demoAudio" preload="metadata" controlsList="nodownload nofullscreen noremoteplayback">
+                    <!-- Audio source will be loaded dynamically -->
+                </audio>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+        <div class="section-container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">Tailored to Your Business</h3>
+                    <p class="feature-description">
+                        Every business needs a different sound, we don't do one-size-fits-all. Soniq AI music is custom to your business type. This music is specifically made for you so your business plays music that is most suitable to it.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3 class="feature-title">100% Commercial Rights & Compliance</h3>
+                    <p class="feature-description">
+                        All tracks that is played from Soniq AI after subscription are fully licensed for commercial use. No more manual license hunting - just worry-free music that you can play at your specific business location.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">Plug & Play Integration</h3>
+                    <p class="feature-description">
+                        Seamlessly integrate Soniq AI with your existing in-store speakers using Bluetooth, login to Soniq AI, and just hit play. No complications, just simply excellence with ease.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <div class="footer-logo">Soniq AI</div>
+                    <div class="footer-tagline">"AI Meets Business Music"</div>
+                    <p class="footer-description">
+                        Transforming business environments through AI-powered music curation. Create spaces that attract success and elevate customer experiences with our intelligent streaming platform.
+                    </p>
+                </div>
+                
+                <div class="footer-column">
+                    <h4>Access</h4>
+                    <ul class="footer-links">
+                        <li><a href="/login">Login</a></li>
+                        <li><a href="/admin-login">Admin</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h4>Support</h4>
+                    <ul class="footer-links">
+                        <li><a href="/contact">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="footer-copyright">
+                    © 2025 Soniq AI Technologies. All rights reserved.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Music Player Functionality
+        let isPlaying = false;
+        let currentSong = null;
+        let progressInterval = null;
+
+        // DOM Elements
+        const mainPlayBtn = document.getElementById('mainPlayBtn');
+        const albumArt = document.getElementById('albumArt');
+        const progressFill = document.getElementById('progressFill');
+        const currentTimeDisplay = document.getElementById('currentTime');
+        const totalTimeDisplay = document.getElementById('totalTime');
+        const trackTitle = document.getElementById('trackTitle');
+        const trackArtist = document.getElementById('trackArtist');
+        const trackGenre = document.getElementById('trackGenre');
+        const trackPlan = document.getElementById('trackPlan');
+        const demoNotification = document.getElementById('demoNotification');
+        const demoAudio = document.getElementById('demoAudio');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeBtn = document.getElementById('volumeBtn');
+        const progressBar = document.getElementById('progressBar');
+
+        // Load a demo song from the database
+        async function loadDemoSong() {
+            try {
+                const response = await fetch('/api/demo-song');
+                if (response.ok) {
+                    const song = await response.json();
+                    currentSong = song;
+                    updateTrackInfo(song);
+                    demoAudio.src = `/demo-stream/${song._id}`;
+                    console.log('Demo song loaded:', song.title);
+                } else {
+                    console.error('Failed to load demo song');
+                    showLoadError();
+                }
+            } catch (error) {
+                console.error('Error loading demo song:', error);
+                showLoadError();
+            }
+        }
+
+        function updateTrackInfo(song) {
+            trackTitle.textContent = song.title;
+            trackArtist.textContent = song.artist;
+            trackGenre.textContent = song.genre || 'Business Music';
+            trackPlan.textContent = song.plan === 'abundance' ? 'Abundance Plan' : 'Business Music';
+            
+            if (song.duration) {
+                totalTimeDisplay.textContent = song.duration;
+            }
+        }
+
+        function showLoadError() {
+            trackTitle.textContent = 'Demo Unavailable';
+            trackArtist.textContent = 'Please contact for access';
+            trackGenre.textContent = 'Demo';
+            trackPlan.textContent = 'Contact Required';
+            mainPlayBtn.disabled = true;
+            mainPlayBtn.style.opacity = '0.5';
+        }
+
+        // Format time display
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            if (demoAudio && !isNaN(demoAudio.duration)) {
+                const progress = (demoAudio.currentTime / demoAudio.duration) * 100;
+                progressFill.style.width = `${progress}%`;
+                currentTimeDisplay.textContent = formatTime(demoAudio.currentTime);
+                totalTimeDisplay.textContent = formatTime(demoAudio.duration);
+            }
+        }
+
+        // Start audio playback
+        function startPlayback() {
+            if (!currentSong) {
+                showDemoNotification();
+                return;
+            }
+
+            isPlaying = true;
+            mainPlayBtn.innerHTML = '⏸';
+            albumArt.classList.add('playing');
+            
+            demoAudio.volume = volumeSlider.value / 100;
+            
+            const playPromise = demoAudio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log('Audio playing successfully');
+                    progressInterval = setInterval(updateProgress, 100);
+                }).catch(error => {
+                    console.error('Audio play failed:', error);
+                    pausePlayback();
+                    alert('Audio playback failed. Please try again or contact support.');
+                });
+            }
+        }
+
+        // Pause audio playback
+        function pausePlayback() {
+            isPlaying = false;
+            mainPlayBtn.innerHTML = '▶';
+            albumArt.classList.remove('playing');
+            
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            
+            if (!demoAudio.paused) {
+                demoAudio.pause();
+            }
+        }
+
+        // Show demo completion notification
+        function showDemoNotification() {
+            demoNotification.classList.add('show');
+        }
+
+        // Close demo notification
+        function closeDemoNotification() {
+            demoNotification.classList.remove('show');
+        }
+
+        // Event Listeners
+        mainPlayBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                pausePlayback();
+            } else {
+                startPlayback();
+            }
+        });
+
+        // Progress bar click
+        progressBar.addEventListener('click', (e) => {
+            if (demoAudio && !isNaN(demoAudio.duration)) {
+                const rect = progressBar.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickPercent = clickX / rect.width;
+                demoAudio.currentTime = clickPercent * demoAudio.duration;
+            }
+        });
+
+        // Control buttons
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            alert('Previous track available with full subscription. Contact us for access!');
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            showDemoNotification();
+        });
+
+        document.getElementById('rewindBtn').addEventListener('click', () => {
+            if (demoAudio && demoAudio.currentTime > 10) {
+                demoAudio.currentTime -= 10;
+            }
+        });
+
+        document.getElementById('forwardBtn').addEventListener('click', () => {
+            if (demoAudio && demoAudio.currentTime < demoAudio.duration - 10) {
+                demoAudio.currentTime += 10;
+            }
+        });
+
+        // Volume controls
+        volumeSlider.addEventListener('input', (e) => {
+            const volume = e.target.value / 100;
+            demoAudio.volume = volume;
+            
+            if (volume === 0) {
+                volumeBtn.innerHTML = '🔇';
+            } else if (volume < 0.5) {
+                volumeBtn.innerHTML = '🔉';
+            } else {
+                volumeBtn.innerHTML = '🔊';
+            }
+        });
+
+        volumeBtn.addEventListener('click', () => {
+            if (demoAudio.volume > 0) {
+                demoAudio.volume = 0;
+                volumeSlider.value = 0;
+                volumeBtn.innerHTML = '🔇';
+            } else {
+                demoAudio.volume = 0.7;
+                volumeSlider.value = 70;
+                volumeBtn.innerHTML = '🔊';
+            }
+        });
+
+        // Audio event listeners
+        demoAudio.addEventListener('loadedmetadata', () => {
+            console.log('Audio metadata loaded');
+            updateProgress();
+        });
+
+        demoAudio.addEventListener('ended', () => {
+            pausePlayback();
+            showDemoNotification();
+        });
+
+        demoAudio.addEventListener('error', (e) => {
+            console.error('Audio error:', e);
+            pausePlayback();
+            showLoadError();
+        });
+
+        demoAudio.addEventListener('timeupdate', updateProgress);
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        }, { passive: true });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            demoAudio.volume = 0.7;
+            loadDemoSong();
+            console.log('Soniq AI Demo Player initialized');
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+            if (!demoAudio.paused) {
+                demoAudio.pause();
+            }
+        });
+
+        console.log('Soniq AI - Transforming businesses with AI-powered music');
+    </script>
