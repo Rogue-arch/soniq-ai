@@ -451,6 +451,10 @@
             box-shadow: 0 12px 40px rgba(201, 169, 97, 0.3);
             letter-spacing: -0.01em;
             margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .submit-btn:hover {
@@ -460,6 +464,26 @@
 
         .submit-btn:active {
             transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .submit-btn.success {
+            background: linear-gradient(135deg, var(--success-color), #16A34A);
+            color: white;
+        }
+
+        .submit-btn .checkmark {
+            display: none;
+            font-size: 18px;
+        }
+
+        .submit-btn.success .checkmark {
+            display: inline;
         }
 
         .form-footer {
@@ -500,6 +524,80 @@
 
         .form-message.show {
             display: block;
+        }
+
+        /* Success State Overlay */
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 13, 23, 0.95);
+            backdrop-filter: blur(20px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .success-content {
+            text-align: center;
+            padding: 60px 40px;
+            background: var(--surface-glass-strong);
+            border: 1px solid var(--border-glass-hover);
+            border-radius: 24px;
+            backdrop-filter: blur(24px);
+            max-width: 500px;
+            width: 90%;
+            animation: slideInUp 0.6s ease;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, var(--success-color), #16A34A);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+        }
+
+        .success-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white-pure);
+            margin-bottom: 16px;
+        }
+
+        .success-message {
+            font-size: 16px;
+            color: var(--gray-light);
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .success-close-btn {
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-accent));
+            color: var(--black-rich);
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .success-close-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(201, 169, 97, 0.4);
         }
 
         /* Footer */
@@ -641,6 +739,22 @@
             }
         }
 
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(60px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         @keyframes gradientShift {
             0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -697,6 +811,10 @@
             .footer {
                 padding: 60px 24px 32px;
             }
+
+            .success-content {
+                padding: 40px 24px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -722,6 +840,18 @@
         <div class="orb"></div>
         <div class="orb"></div>
         <div class="orb"></div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div class="success-overlay" id="successOverlay">
+        <div class="success-content">
+            <div class="success-icon">✓</div>
+            <h3 class="success-title">Message Submitted!</h3>
+            <p class="success-message">
+                Thank you for your interest! Our staff team will contact you within 24 hours via email or phone number you provided.
+            </p>
+            <button class="success-close-btn" onclick="closeSuccessOverlay()">Continue</button>
+        </div>
     </div>
 
     <!-- Navigation -->
@@ -829,7 +959,7 @@
 
                         <div class="form-group">
                             <label for="phone" class="form-label">Phone Number</label>
-                            <input type="tel" id="phone" name="phone" class="form-input" placeholder="+1 (555) 123-4567">
+                            <input type="tel" id="phone" name="phone" class="form-input" placeholder="+91 98765 43210">
                         </div>
 
                         <div class="form-group">
@@ -862,7 +992,8 @@
                         </div>
 
                         <button type="submit" class="submit-btn" id="submitBtn">
-                            Send Request
+                            <span class="checkmark">✓</span>
+                            <span class="button-text">Send Request</span>
                         </button>
                     </form>
 
@@ -923,10 +1054,22 @@
             }
         }, { passive: true });
 
+        // Success overlay functions
+        function showSuccessOverlay() {
+            document.getElementById('successOverlay').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSuccessOverlay() {
+            document.getElementById('successOverlay').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
         // Form submission handling
         const contactForm = document.getElementById('contactForm');
         const formMessage = document.getElementById('formMessage');
         const submitBtn = document.getElementById('submitBtn');
+        const buttonText = submitBtn.querySelector('.button-text');
 
         function showMessage(message, type) {
             formMessage.textContent = message;
@@ -941,7 +1084,7 @@
             
             // Disable submit button and show loading state
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Sending...';
+            buttonText.textContent = 'Sending...';
             
             try {
                 const formData = new FormData(contactForm);
@@ -955,18 +1098,34 @@
                 });
 
                 if (response.ok) {
-                    showMessage('Thank you! Your message has been sent successfully. We\'ll get back to you within 24 hours.', 'success');
+                    // Show success state
+                    submitBtn.classList.add('success');
+                    buttonText.textContent = 'Submitted';
+                    
+                    // Clear form
                     contactForm.reset();
+                    
+                    // Show success overlay after a brief moment
+                    setTimeout(() => {
+                        showSuccessOverlay();
+                        // Reset button after overlay is shown
+                        setTimeout(() => {
+                            submitBtn.classList.remove('success');
+                            submitBtn.disabled = false;
+                            buttonText.textContent = 'Send Request';
+                        }, 1000);
+                    }, 1500);
+                    
                 } else {
                     throw new Error('Form submission failed');
                 }
             } catch (error) {
                 console.error('Error:', error);
                 showMessage('Sorry, there was an error sending your message. Please try again or contact us directly.', 'error');
-            } finally {
-                // Re-enable submit button
+                
+                // Reset button on error
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Send Request';
+                buttonText.textContent = 'Send Request';
             }
         });
 
@@ -999,18 +1158,28 @@
             }
         });
 
-        // Phone number formatting (optional)
+        // Phone number formatting for India (+91)
         const phoneField = document.getElementById('phone');
         phoneField.addEventListener('input', (e) => {
             let value = e.target.value.replace(/\D/g, '');
-            if (value.length >= 10) {
-                value = value.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
-            } else if (value.length >= 6) {
-                value = value.replace(/(\d{3})(\d{3})/, '($1) $2-');
-            } else if (value.length >= 3) {
-                value = value.replace(/(\d{3})/, '($1) ');
+            
+            // Handle Indian phone number format
+            if (value.startsWith('91')) {
+                // Remove leading 91 if user types it
+                value = value.substring(2);
             }
-            e.target.value = value;
+            
+            if (value.length <= 10) {
+                if (value.length >= 5) {
+                    value = value.replace(/(\d{5})(\d{1,5})/, '$1 $2');
+                }
+                e.target.value = value ? '+91 ' + value : '';
+            } else {
+                // Limit to 10 digits after +91
+                value = value.substring(0, 10);
+                value = value.replace(/(\d{5})(\d{5})/, '$1 $2');
+                e.target.value = '+91 ' + value;
+            }
         });
 
         // Initialize page
@@ -1027,6 +1196,20 @@
                 input.addEventListener('blur', () => {
                     input.parentElement.style.transform = 'translateY(0)';
                 });
+            });
+
+            // Close success overlay when clicking outside
+            document.getElementById('successOverlay').addEventListener('click', (e) => {
+                if (e.target.id === 'successOverlay') {
+                    closeSuccessOverlay();
+                }
+            });
+
+            // Close success overlay with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && document.getElementById('successOverlay').style.display === 'flex') {
+                    closeSuccessOverlay();
+                }
             });
         });
 
