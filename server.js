@@ -14,7 +14,7 @@ const app = express();
 const PORT = 3000;
 const MONGODB_URI = 'mongodb+srv://vihaansingh1787:6L6jqMLG3CTkN3x@cluster0.n4mvsb7.mongodb.net/';
 const SESSION_SECRET = 'soniqai-secret-key-2024';
-const ADMIN_PASSWORD = 'admin123'; // HARDCODED
+const ADMIN_PASSWORD = 'soniq555#111-ai'; // HARDCODED
 const NODE_ENV = 'development';
 const UPLOAD_DIR = 'uploads';
 const MAX_FILE_SIZE = 52428800;
@@ -661,4 +661,5 @@ app.listen(PORT, () => {
   console.log(`Upload Directory: ${UPLOAD_DIR}`);
   console.log(`Admin Password: ${ADMIN_PASSWORD}`);
 });
+
 
