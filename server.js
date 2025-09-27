@@ -8,14 +8,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { GridFSBucket } = require('mongodb');
-// Dynamic import for uuid - will be loaded async
-let uuidv4;
-
-// Initialize UUID
-(async () => {
-  const uuid = await import('uuid');
-  uuidv4 = uuid.v4;
-})();
 
 const app = express();
 
@@ -231,28 +223,32 @@ function generateOneTimeCode() {
 
 // Helper function to manage user sessions
 async function manageUserSessions(userId, currentSessionId) {
-  const user = await User.findById(userId);
-  if (!user) return;
+  try {
+    const user = await User.findById(userId);
+    if (!user) return;
 
-  // Remove expired sessions (older than SESSION_MAX_AGE)
-  user.activeSessions = user.activeSessions.filter(session => 
-    Date.now() - session.createdAt.getTime() < parseInt(SESSION_MAX_AGE)
-  );
+    // Remove expired sessions (older than SESSION_MAX_AGE)
+    user.activeSessions = user.activeSessions.filter(session => 
+      Date.now() - session.createdAt.getTime() < parseInt(SESSION_MAX_AGE)
+    );
 
-  // If more than MAX_ACTIVE_SESSIONS, remove oldest ones
-  if (user.activeSessions.length >= parseInt(MAX_ACTIVE_SESSIONS)) {
-    user.activeSessions = user.activeSessions
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, parseInt(MAX_ACTIVE_SESSIONS) - 1);
+    // If more than MAX_ACTIVE_SESSIONS, remove oldest ones
+    if (user.activeSessions.length >= parseInt(MAX_ACTIVE_SESSIONS)) {
+      user.activeSessions = user.activeSessions
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, parseInt(MAX_ACTIVE_SESSIONS) - 1);
+    }
+
+    // Add current session
+    user.activeSessions.push({
+      sessionId: currentSessionId,
+      createdAt: new Date()
+    });
+
+    await user.save();
+  } catch (error) {
+    console.error('Session management error:', error);
   }
-
-  // Add current session
-  user.activeSessions.push({
-    sessionId: currentSessionId,
-    createdAt: new Date()
-  });
-
-  await user.save();
 }
 
 // Routes (keeping all existing routes the same)
@@ -302,24 +298,40 @@ app.get('/api/auth/check', (req, res) => {
 
 // Logout API endpoint
 app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy();
-  res.json({ success: true });
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ error: 'Failed to logout' });
+    }
+    res.json({ success: true });
+  });
 });
 
-// Sign up route
+// FIXED: Sign up route
 app.post('/signup', async (req, res) => {
+  console.log('=== SIGNUP ATTEMPT ===');
+  console.log('Request body:', req.body);
+  
   try {
     const { email, password, oneTimeCode, name } = req.body;
 
+    // Validate input
+    if (!email || !password || !oneTimeCode) {
+      console.log('Missing required fields');
+      return res.render('signup', { error: 'All fields are required' });
+    }
+
     // Check if one-time code exists and is valid
-    const code = await OneTimeCode.findOne({ code: oneTimeCode, used: false });
+    const code = await OneTimeCode.findOne({ code: oneTimeCode.toUpperCase(), used: false });
     if (!code) {
+      console.log('Invalid or expired one-time code');
       return res.render('signup', { error: 'Invalid or expired one-time code' });
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
+      console.log('User already exists');
       return res.render('signup', { error: 'User already exists' });
     }
 
@@ -328,45 +340,61 @@ app.post('/signup', async (req, res) => {
 
     // Create user
     const user = new User({
-      email,
+      email: email.toLowerCase(),
       password: hashedPassword,
       name: name || '',
       plan: code.plan
     });
 
     await user.save();
+    console.log('User created successfully');
 
     // Mark code as used
     code.used = true;
     await code.save();
+    console.log('Code marked as used');
 
-    res.redirect('/login');
+    console.log('Signup successful, redirecting to login');
+    return res.redirect('/login');
   } catch (error) {
-    console.error(error);
-    res.render('signup', { error: 'Server error' });
+    console.error('Signup error:', error);
+    return res.render('signup', { error: 'Server error. Please try again.' });
   }
 });
 
-// Login route
+// FIXED: Login route
 app.post('/login', async (req, res) => {
+  console.log('=== LOGIN ATTEMPT ===');
+  console.log('Request body:', req.body);
+  
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.render('login', { error: 'Email and password are required' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
+      console.log('User not found');
       return res.render('login', { error: 'Invalid credentials' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log('Password mismatch');
       return res.render('login', { error: 'Invalid credentials' });
     }
 
-    // Manage sessions
-    const sessionId = uuidv4();
+    // Generate session ID
+    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
     req.session.sessionId = sessionId;
+    
+    // Manage sessions
     await manageUserSessions(user._id, sessionId);
 
+    // Set session user
     req.session.user = {
       id: user._id,
       email: user.email,
@@ -374,27 +402,53 @@ app.post('/login', async (req, res) => {
       plan: user.plan
     };
 
-    res.redirect('/dashboard');
+    // Save session before redirect
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.render('login', { error: 'Login failed. Please try again.' });
+      }
+      console.log('Login successful, redirecting to dashboard');
+      return res.redirect('/dashboard');
+    });
   } catch (error) {
-    console.error(error);
-    res.render('login', { error: 'Server error' });
+    console.error('Login error:', error);
+    return res.render('login', { error: 'Server error. Please try again.' });
   }
 });
 
-// Admin login route
+// FIXED: Admin login route
 app.post('/admin-login', async (req, res) => {
+  console.log('=== ADMIN LOGIN ATTEMPT ===');
+  console.log('Request body:', req.body);
+  
   try {
     const { password } = req.body;
 
+    if (!password) {
+      console.log('Missing admin password');
+      return res.render('admin-login', { error: 'Password is required' });
+    }
+
     if (password !== ADMIN_PASSWORD) {
+      console.log('Invalid admin password');
       return res.render('admin-login', { error: 'Invalid admin password' });
     }
 
     req.session.admin = true;
-    res.redirect('/admin-dashboard');
+    
+    // Save session before redirect
+    req.session.save((err) => {
+      if (err) {
+        console.error('Admin session save error:', err);
+        return res.render('admin-login', { error: 'Login failed. Please try again.' });
+      }
+      console.log('Admin login successful, redirecting to admin dashboard');
+      return res.redirect('/admin-dashboard');
+    });
   } catch (error) {
-    console.error(error);
-    res.render('admin-login', { error: 'Server error' });
+    console.error('Admin login error:', error);
+    return res.render('admin-login', { error: 'Server error. Please try again.' });
   }
 });
 
@@ -720,6 +774,77 @@ app.get('/stream/:id', apiRequireAuth, async (req, res) => {
       // Get file info from GridFS
       const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
       if (!files || files.length === 0) {
+        return res.status(404).send('Demo file not found in GridFS');
+      }
+      
+      const file = files[0];
+      const fileSize = file.length;
+      const range = req.headers.range;
+
+      // Limit demo streaming to first 30% of file
+      const maxBytes = Math.min(fileSize, Math.floor(fileSize * 0.3));
+
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = Math.min(parts[1] ? parseInt(parts[1], 10) : maxBytes - 1, maxBytes - 1);
+        const chunksize = (end - start) + 1;
+        
+        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
+          start: start,
+          end: end + 1
+        });
+        
+        const head = {
+          'Content-Range': `bytes ${start}-${end}/${maxBytes}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': song.mimeType || 'audio/mpeg',
+        };
+        res.writeHead(206, head);
+        downloadStream.pipe(res);
+      } else {
+        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
+          start: 0,
+          end: maxBytes
+        });
+        
+        const head = {
+          'Content-Length': maxBytes,
+          'Content-Type': song.mimeType || 'audio/mpeg',
+        };
+        res.writeHead(200, head);
+        downloadStream.pipe(res);
+      }
+    } catch (streamError) {
+      console.error('Demo GridFS streaming error:', streamError);
+      res.status(500).send('Error streaming demo file');
+    }
+  } catch (error) {
+    console.error('Demo stream error:', error);
+    res.status(500).send('Server error');
+  }
+});
+
+// Logout route
+app.get('/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/');
+});
+
+// Admin logout route
+app.get('/admin/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/');
+});
+
+// Initialize server
+app.listen(PORT, () => {
+  console.log(`SoniqAI server running on port ${PORT}`);
+  console.log(`Environment: ${NODE_ENV}`);
+  console.log(`MongoDB URI: ${MONGODB_URI}`);
+  console.log(`Upload Directory: ${UPLOAD_DIR} (GridFS enabled)`);
+}); === 0) {
         return res.status(404).send('File not found in GridFS');
       }
       
@@ -811,82 +936,4 @@ app.get('/demo-stream/:id', async (req, res) => {
     try {
       // Get file info from GridFS
       const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
-      if (!files || files.length === 0) {
-        return res.status(404).send('Demo file not found in GridFS');
-      }
-      
-      const file = files[0];
-      const fileSize = file.length;
-      const range = req.headers.range;
-
-      // Limit demo streaming to first 30% of file
-      const maxBytes = Math.min(fileSize, Math.floor(fileSize * 0.3));
-
-      if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = Math.min(parts[1] ? parseInt(parts[1], 10) : maxBytes - 1, maxBytes - 1);
-        const chunksize = (end - start) + 1;
-        
-        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
-          start: start,
-          end: end + 1
-        });
-        
-        const head = {
-          'Content-Range': `bytes ${start}-${end}/${maxBytes}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunksize,
-          'Content-Type': song.mimeType || 'audio/mpeg',
-        };
-        res.writeHead(206, head);
-        downloadStream.pipe(res);
-      } else {
-        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
-          start: 0,
-          end: maxBytes
-        });
-        
-        const head = {
-          'Content-Length': maxBytes,
-          'Content-Type': song.mimeType || 'audio/mpeg',
-        };
-        res.writeHead(200, head);
-        downloadStream.pipe(res);
-      }
-    } catch (streamError) {
-      console.error('Demo GridFS streaming error:', streamError);
-      res.status(500).send('Error streaming demo file');
-    }
-  } catch (error) {
-    console.error('Demo stream error:', error);
-    res.status(500).send('Server error');
-  }
-});
-
-// Logout route
-app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/');
-});
-
-// Admin logout route
-app.get('/admin/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/');
-});
-
-// Initialize UUID and start server
-(async () => {
-  const uuid = await import('uuid');
-  uuidv4 = uuid.v4;
-  
-  app.listen(PORT, () => {
-    console.log(`SoniqAI server running on port ${PORT}`);
-    console.log(`Environment: ${NODE_ENV}`);
-    console.log(`MongoDB URI: ${MONGODB_URI}`);
-    console.log(`Upload Directory: ${UPLOAD_DIR} (GridFS enabled)`);
-  });
-})();
-
-
+      if (!files || files.length
