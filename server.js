@@ -251,7 +251,7 @@ async function manageUserSessions(userId, currentSessionId) {
   }
 }
 
-// Routes (keeping all existing routes the same)
+// Routes
 app.get('/', (req, res) => {
   res.render('index', { user: req.session.user });
 });
@@ -307,7 +307,7 @@ app.post('/api/auth/logout', (req, res) => {
   });
 });
 
-// FIXED: Sign up route
+// Sign up route
 app.post('/signup', async (req, res) => {
   console.log('=== SIGNUP ATTEMPT ===');
   console.log('Request body:', req.body);
@@ -362,7 +362,7 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// FIXED: Login route
+// Login route
 app.post('/login', async (req, res) => {
   console.log('=== LOGIN ATTEMPT ===');
   console.log('Request body:', req.body);
@@ -417,7 +417,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// FIXED: Admin login route
+// Admin login route
 app.post('/admin-login', async (req, res) => {
   console.log('=== ADMIN LOGIN ATTEMPT ===');
   console.log('Request body:', req.body);
@@ -505,7 +505,7 @@ app.post('/admin/generate-code', apiRequireAdmin, async (req, res) => {
   }
 });
 
-// Updated Add song route - now uses GridFS (single upload)
+// Add song route - uses GridFS (single upload)
 app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
   upload.single('audioFile')(req, res, async (err) => {
     if (err) {
@@ -567,7 +567,7 @@ app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
   });
 });
 
-// New Mass upload route - uses GridFS
+// Mass upload route - uses GridFS
 app.post('/admin/mass-upload', apiRequireAdmin, (req, res) => {
   const uploadMultiple = multer({ 
     storage: multer.memoryStorage(),
@@ -693,7 +693,7 @@ app.post('/admin/mass-upload', apiRequireAdmin, (req, res) => {
   });
 });
 
-// Updated Delete song route - now deletes from GridFS
+// Delete song route - deletes from GridFS
 app.delete('/admin/delete-song/:id', apiRequireAdmin, async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -717,7 +717,7 @@ app.delete('/admin/delete-song/:id', apiRequireAdmin, async (req, res) => {
   }
 });
 
-// Get song details route (unchanged)
+// Get song details route
 app.get('/api/song/:id', apiRequireAuth, async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -746,7 +746,7 @@ app.get('/api/song/:id', apiRequireAuth, async (req, res) => {
   }
 });
 
-// Updated Stream audio route - now streams from GridFS
+// Stream audio route - streams from GridFS
 app.get('/stream/:id', apiRequireAuth, async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -775,6 +775,98 @@ app.get('/stream/:id', apiRequireAuth, async (req, res) => {
       const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
       if (!files || files.length === 0) {
         return res.status(404).send('File not found in GridFS');
+      }
+      
+      const file = files[0];
+      const fileSize = file.length;
+
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        
+        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
+          start: start,
+          end: end + 1
+        });
+        
+        const head = {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': song.mimeType || 'audio/mpeg',
+        };
+        res.writeHead(206, head);
+        downloadStream.pipe(res);
+      } else {
+        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId);
+        
+        const head = {
+          'Content-Length': fileSize,
+          'Content-Type': song.mimeType || 'audio/mpeg',
+        };
+        res.writeHead(200, head);
+        downloadStream.pipe(res);
+      }
+    } catch (streamError) {
+      console.error('GridFS streaming error:', streamError);
+      res.status(500).send('Error streaming file');
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Server error');
+  }
+});
+
+// Demo song endpoint
+app.get('/api/demo-song', async (req, res) => {
+  try {
+    // Get a random song from the database for demo purposes
+    const songs = await Song.find({ plan: { $in: ['both', 'normal'] } }).limit(10);
+    
+    if (songs.length === 0) {
+      return res.status(404).json({ error: 'No demo songs available' });
+    }
+    
+    // Select a random song from available songs
+    const randomIndex = Math.floor(Math.random() * songs.length);
+    const demoSong = songs[randomIndex];
+    
+    // Return basic song info (no sensitive data)
+    res.json({
+      _id: demoSong._id,
+      title: demoSong.title,
+      artist: demoSong.artist,
+      genre: demoSong.genre,
+      duration: demoSong.duration || '3:45',
+      plan: demoSong.plan,
+      album: demoSong.album
+    });
+  } catch (error) {
+    console.error('Demo song error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Demo stream endpoint - streams from GridFS with limits
+app.get('/demo-stream/:id', async (req, res) => {
+  try {
+    const song = await Song.findById(req.params.id);
+    if (!song) {
+      return res.status(404).send('Demo song not found');
+    }
+
+    // Only allow streaming of 'both' or 'normal' plan songs for demo
+    if (song.plan !== 'both' && song.plan !== 'normal') {
+      return res.status(403).send('Demo access denied');
+    }
+
+    try {
+      // Get file info from GridFS
+      const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
+      if (!files || files.length === 0) {
+        return res.status(404).send('Demo file not found in GridFS');
       }
       
       const file = files[0];
@@ -852,96 +944,4 @@ app.listen(PORT, () => {
   console.log(`Environment: ${NODE_ENV}`);
   console.log(`MongoDB URI: ${MONGODB_URI}`);
   console.log(`Upload Directory: ${UPLOAD_DIR} (GridFS enabled)`);
-});;
-
-      if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunksize = (end - start) + 1;
-        
-        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
-          start: start,
-          end: end + 1
-        });
-        
-        const head = {
-          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunksize,
-          'Content-Type': song.mimeType || 'audio/mpeg',
-        };
-        res.writeHead(206, head);
-        downloadStream.pipe(res);
-      } else {
-        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId);
-        
-        const head = {
-          'Content-Length': fileSize,
-          'Content-Type': song.mimeType || 'audio/mpeg',
-        };
-        res.writeHead(200, head);
-        downloadStream.pipe(res);
-      }
-    } catch (streamError) {
-      console.error('GridFS streaming error:', streamError);
-      res.status(500).send('Error streaming file');
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Server error');
-  }
 });
-
-// Demo song endpoint (unchanged)
-app.get('/api/demo-song', async (req, res) => {
-  try {
-    // Get a random song from the database for demo purposes
-    const songs = await Song.find({ plan: { $in: ['both', 'normal'] } }).limit(10);
-    
-    if (songs.length === 0) {
-      return res.status(404).json({ error: 'No demo songs available' });
-    }
-    
-    // Select a random song from available songs
-    const randomIndex = Math.floor(Math.random() * songs.length);
-    const demoSong = songs[randomIndex];
-    
-    // Return basic song info (no sensitive data)
-    res.json({
-      _id: demoSong._id,
-      title: demoSong.title,
-      artist: demoSong.artist,
-      genre: demoSong.genre,
-      duration: demoSong.duration || '3:45',
-      plan: demoSong.plan,
-      album: demoSong.album
-    });
-  } catch (error) {
-    console.error('Demo song error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Updated Demo stream endpoint - now streams from GridFS with limits
-app.get('/demo-stream/:id', async (req, res) => {
-  try {
-    const song = await Song.findById(req.params.id);
-    if (!song) {
-      return res.status(404).send('Demo song not found');
-    }
-
-    // Only allow streaming of 'both' or 'normal' plan songs for demo
-    if (song.plan !== 'both' && song.plan !== 'normal') {
-      return res.status(403).send('Demo access denied');
-    }
-
-    try {
-      // Get file info from GridFS
-      const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
-      if (!files || files.length === 0) {
-        return res.status(404).send('Demo file not found in GridFS');
-      }
-      
-      const file = files[0];
-      const fileSize = file.length
