@@ -121,9 +121,17 @@ const OneTimeCode = mongoose.model('OneTimeCode', oneTimeCodeSchema);
 
 // Authentication Middleware
 const requireAuth = (req, res, next) => {
+  console.log('=== REQUIRE AUTH CHECK ===');
+  console.log('Session exists:', !!req.session);
+  console.log('Session user exists:', !!req.session.user);
+  console.log('Session user data:', req.session.user);
+  
   if (!req.session.user) {
+    console.log('No session user found, redirecting to login');
     return res.redirect('/login');
   }
+  
+  console.log('Auth check passed, proceeding to protected route');
   next();
 };
 
@@ -389,27 +397,37 @@ app.post('/login', async (req, res) => {
 
     // Generate session ID
     const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    req.session.sessionId = sessionId;
     
-    // Manage sessions
-    await manageUserSessions(user._id, sessionId);
-
-    // Set session user
+    // Set session data BEFORE managing user sessions
     req.session.user = {
       id: user._id,
       email: user.email,
       name: user.name,
       plan: user.plan
     };
+    req.session.sessionId = sessionId;
 
-    // Save session before redirect
-    req.session.save((err) => {
+    console.log('Session data set:', req.session.user);
+    
+    // Save session and then redirect
+    req.session.save(async (err) => {
       if (err) {
         console.error('Session save error:', err);
         return res.render('login', { error: 'Login failed. Please try again.' });
       }
-      console.log('Login successful, redirecting to dashboard');
-      return res.redirect('/dashboard');
+      
+      console.log('Session saved successfully');
+      
+      try {
+        // Manage sessions after session is saved
+        await manageUserSessions(user._id, sessionId);
+        console.log('Login successful, redirecting to dashboard');
+        return res.redirect('/dashboard');
+      } catch (sessionError) {
+        console.error('Session management error:', sessionError);
+        // Still redirect even if session management fails
+        return res.redirect('/dashboard');
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -454,6 +472,10 @@ app.post('/admin-login', async (req, res) => {
 
 // Dashboard route (protected)
 app.get('/dashboard', requireAuth, async (req, res) => {
+  console.log('=== DASHBOARD ACCESS ATTEMPT ===');
+  console.log('Session user:', req.session.user);
+  console.log('Session ID:', req.session.id);
+  
   try {
     let query = {};
     if (req.session.user.plan === 'abundance') {
@@ -462,13 +484,16 @@ app.get('/dashboard', requireAuth, async (req, res) => {
       query = { $or: [{ plan: 'normal' }, { plan: 'both' }] };
     }
 
+    console.log('Song query:', query);
     const songs = await Song.find(query).sort({ uploadedAt: -1 });
+    console.log('Found songs:', songs.length);
+    
     res.render('dashboard', { 
       user: req.session.user, 
       songs: songs 
     });
   } catch (error) {
-    console.error(error);
+    console.error('Dashboard error:', error);
     res.status(500).send('Server error');
   }
 });
