@@ -7,29 +7,53 @@ const MongoStore = require('connect-mongo');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { GridFSBucket } = require('mongodb');
+// Dynamic import for uuid - will be loaded async
+let uuidv4;
+
+// Initialize UUID
+(async () => {
+  const uuid = await import('uuid');
+  uuidv4 = uuid.v4;
+})();
 
 const app = express();
 
-// HARDCODED VALUES - NO ENV DEPENDENCY
-const PORT = 3000;
-const MONGODB_URI = 'mongodb+srv://vihaansingh1787:6L6jqMLG3CTkN3x@cluster0.n4mvsb7.mongodb.net/';
-const SESSION_SECRET = 'soniqai-secret-key-2024';
-const ADMIN_PASSWORD = 'soniq555#111-ai'; // HARDCODED
-const NODE_ENV = 'development';
-const UPLOAD_DIR = 'uploads';
-const MAX_FILE_SIZE = 52428800;
-const SESSION_MAX_AGE = 86400000;
-const BCRYPT_ROUNDS = 12;
-const MAX_ACTIVE_SESSIONS = 2;
-const CODE_EXPIRY_HOURS = 24;
-
-// Initialize UUID - simplified version
-let { v4: uuidv4 } = require('uuid');
+// Environment Variables with defaults
+const {
+  PORT = 3000,
+  MONGODB_URI = 'mongodb://localhost:27017/soniqai',
+  SESSION_SECRET = 'soniqai-secret-key-2024',
+  ADMIN_PASSWORD = 'admin123',
+  NODE_ENV = 'development',
+  UPLOAD_DIR = 'uploads',
+  MAX_FILE_SIZE = 52428800, // 50MB in bytes
+  SESSION_MAX_AGE = 86400000, // 24 hours in milliseconds
+  BCRYPT_ROUNDS = 12,
+  MAX_ACTIVE_SESSIONS = 2,
+  CODE_EXPIRY_HOURS = 24
+} = process.env;
 
 // MongoDB Connection
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
+});
+
+// GridFS setup
+let gfs;
+let gridfsBucket;
+
+mongoose.connection.once('open', () => {
+  console.log('MongoDB connected');
+  gridfsBucket = new GridFSBucket(mongoose.connection.db, {
+    bucketName: 'audio'
+  });
+  
+  // Legacy GridFS for compatibility
+  gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+    bucketName: 'audio'
+  });
 });
 
 // Middleware
@@ -47,9 +71,9 @@ app.use(session({
     mongoUrl: MONGODB_URI
   }),
   cookie: {
-    secure: false, // ALWAYS FALSE FOR DEVELOPMENT
+    secure: NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: SESSION_MAX_AGE
+    maxAge: parseInt(SESSION_MAX_AGE)
   }
 }));
 
@@ -57,12 +81,12 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.set('views', './views');
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists (keeping for backward compatibility)
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR);
 }
 
-// MongoDB Schemas
+// MongoDB Schemas - Updated to include GridFS ID
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -83,6 +107,10 @@ const songSchema = new mongoose.Schema({
   genre: String,
   plan: { type: String, enum: ['normal', 'abundance', 'both'], default: 'both' },
   filename: { type: String, required: true },
+  gridfsId: { type: mongoose.Schema.Types.ObjectId, required: true }, // GridFS file ID
+  originalName: String, // Store original filename
+  mimeType: String, // Store MIME type
+  fileSize: Number, // Store file size
   description: String,
   uploadedAt: { type: Date, default: Date.now }
 });
@@ -92,7 +120,7 @@ const oneTimeCodeSchema = new mongoose.Schema({
   plan: { type: String, enum: ['normal', 'abundance'], required: true },
   used: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
-  expiresAt: { type: Date, default: () => new Date(Date.now() + (CODE_EXPIRY_HOURS * 60 * 60 * 1000)), expires: 0 }
+  expiresAt: { type: Date, default: () => new Date(Date.now() + (parseInt(CODE_EXPIRY_HOURS) * 60 * 60 * 1000)), expires: 0 }
 });
 
 const User = mongoose.model('User', userSchema);
@@ -108,12 +136,9 @@ const requireAuth = (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
-  console.log('Admin check - Session admin:', req.session.admin);
   if (!req.session.admin) {
-    console.log('Admin access denied, redirecting to admin-login');
     return res.redirect('/admin-login');
   }
-  console.log('Admin access granted');
   next();
 };
 
@@ -132,16 +157,8 @@ const apiRequireAdmin = (req, res, next) => {
   next();
 };
 
-// Multer configuration for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
-    cb(null, uniqueName);
-  }
-});
+// Updated Multer configuration to store in memory first, then GridFS
+const storage = multer.memoryStorage(); // Store in memory temporarily
 
 const upload = multer({ 
   storage: storage,
@@ -177,11 +194,32 @@ const upload = multer({
       cb(new Error('Only audio files are allowed (MP3, WAV, FLAC, M4A, AAC)'));
     }
   },
-  limits: { fileSize: MAX_FILE_SIZE }
+  limits: { fileSize: parseInt(MAX_FILE_SIZE) }
 });
+
+// Helper function to upload file to GridFS
+const uploadToGridFS = (buffer, filename, originalName, mimeType) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = gridfsBucket.openUploadStream(filename, {
+      metadata: {
+        originalName: originalName,
+        uploadedAt: new Date()
+      }
+    });
+
+    uploadStream.on('error', reject);
+    uploadStream.on('finish', (file) => {
+      resolve(file._id);
+    });
+
+    // Write buffer to GridFS
+    uploadStream.end(buffer);
+  });
+};
 
 // Helper function to generate one-time codes
 function generateOneTimeCode() {
+  // Generate a proper 12-character alphanumeric code
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 12; i++) {
@@ -195,16 +233,19 @@ async function manageUserSessions(userId, currentSessionId) {
   const user = await User.findById(userId);
   if (!user) return;
 
+  // Remove expired sessions (older than SESSION_MAX_AGE)
   user.activeSessions = user.activeSessions.filter(session => 
-    Date.now() - session.createdAt.getTime() < SESSION_MAX_AGE
+    Date.now() - session.createdAt.getTime() < parseInt(SESSION_MAX_AGE)
   );
 
-  if (user.activeSessions.length >= MAX_ACTIVE_SESSIONS) {
+  // If more than MAX_ACTIVE_SESSIONS, remove oldest ones
+  if (user.activeSessions.length >= parseInt(MAX_ACTIVE_SESSIONS)) {
     user.activeSessions = user.activeSessions
       .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, MAX_ACTIVE_SESSIONS - 1);
+      .slice(0, parseInt(MAX_ACTIVE_SESSIONS) - 1);
   }
 
+  // Add current session
   user.activeSessions.push({
     sessionId: currentSessionId,
     createdAt: new Date()
@@ -213,7 +254,7 @@ async function manageUserSessions(userId, currentSessionId) {
   await user.save();
 }
 
-// Routes
+// Routes (keeping all existing routes the same)
 app.get('/', (req, res) => {
   res.render('index', { user: req.session.user });
 });
@@ -237,12 +278,9 @@ app.get('/login', (req, res) => {
 });
 
 app.get('/admin-login', (req, res) => {
-  console.log('GET /admin-login - Session admin:', req.session.admin);
   if (req.session.admin) {
-    console.log('Admin already logged in, redirecting to dashboard');
     return res.redirect('/admin-dashboard');
   }
-  console.log('Rendering admin login page');
   res.render('admin-login', { error: null });
 });
 
@@ -272,18 +310,22 @@ app.post('/signup', async (req, res) => {
   try {
     const { email, password, oneTimeCode, name } = req.body;
 
+    // Check if one-time code exists and is valid
     const code = await OneTimeCode.findOne({ code: oneTimeCode, used: false });
     if (!code) {
       return res.render('signup', { error: 'Invalid or expired one-time code' });
     }
 
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.render('signup', { error: 'User already exists' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, parseInt(BCRYPT_ROUNDS));
 
+    // Create user
     const user = new User({
       email,
       password: hashedPassword,
@@ -293,6 +335,7 @@ app.post('/signup', async (req, res) => {
 
     await user.save();
 
+    // Mark code as used
     code.used = true;
     await code.save();
 
@@ -318,6 +361,7 @@ app.post('/login', async (req, res) => {
       return res.render('login', { error: 'Invalid credentials' });
     }
 
+    // Manage sessions
     const sessionId = uuidv4();
     req.session.sessionId = sessionId;
     await manageUserSessions(user._id, sessionId);
@@ -336,25 +380,20 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// SUPER SIMPLE ADMIN LOGIN - NO COMPLEXITY
-app.post('/admin-login', (req, res) => {
-  console.log('=== ADMIN LOGIN START ===');
-  console.log('Body:', req.body);
-  
-  const password = req.body.password;
-  console.log('Password received:', password);
-  console.log('Expected:', 'admin123');
-  
-  // DIRECT STRING COMPARISON
-  if (password === 'admin123') {
-    console.log('PASSWORD MATCH!');
+// Admin login route
+app.post('/admin-login', async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (password !== ADMIN_PASSWORD) {
+      return res.render('admin-login', { error: 'Invalid admin password' });
+    }
+
     req.session.admin = true;
-    console.log('Session admin set to:', req.session.admin);
-    console.log('Redirecting to /admin-dashboard');
-    return res.redirect('/admin-dashboard');
-  } else {
-    console.log('PASSWORD MISMATCH');
-    return res.render('admin-login', { error: 'Invalid admin password' });
+    res.redirect('/admin-dashboard');
+  } catch (error) {
+    console.error(error);
+    res.render('admin-login', { error: 'Server error' });
   }
 });
 
@@ -382,15 +421,12 @@ app.get('/dashboard', requireAuth, async (req, res) => {
 // Admin dashboard route (protected)
 app.get('/admin-dashboard', requireAdmin, async (req, res) => {
   try {
-    console.log('Admin dashboard access granted');
     const songs = await Song.find().sort({ uploadedAt: -1 });
     const codes = await OneTimeCode.find({ used: false }).sort({ createdAt: -1 });
     const usedCodes = await OneTimeCode.find({ used: true }).sort({ createdAt: -1 }).limit(10);
-    
-    console.log('Rendering admin dashboard with data');
     res.render('admin-dashboard', { songs, codes, usedCodes });
   } catch (error) {
-    console.error('Admin dashboard error:', error);
+    console.error(error);
     res.status(500).send('Server error');
   }
 });
@@ -414,7 +450,7 @@ app.post('/admin/generate-code', apiRequireAdmin, async (req, res) => {
   }
 });
 
-// Add song route
+// Updated Add song route - now uses GridFS
 app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
   upload.single('audioFile')(req, res, async (err) => {
     if (err) {
@@ -433,12 +469,23 @@ app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
         return res.status(400).json({ error: 'Title and artist are required' });
       }
 
-      console.log('Uploaded file:', {
-        filename: req.file.filename,
+      // Generate unique filename
+      const uniqueFilename = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname);
+
+      console.log('Uploading to GridFS:', {
+        filename: uniqueFilename,
         originalname: req.file.originalname,
         size: req.file.size,
         mimetype: req.file.mimetype
       });
+
+      // Upload file to GridFS
+      const gridfsId = await uploadToGridFS(
+        req.file.buffer, 
+        uniqueFilename, 
+        req.file.originalname, 
+        req.file.mimetype
+      );
 
       const song = new Song({
         title: title.trim(),
@@ -448,7 +495,11 @@ app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
         genre: genre ? genre.trim() : undefined,
         plan: plan || 'both',
         description: description ? description.trim() : undefined,
-        filename: req.file.filename
+        filename: uniqueFilename,
+        gridfsId: gridfsId,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        fileSize: req.file.size
       });
 
       await song.save();
@@ -456,20 +507,12 @@ app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
       res.json({ success: true, message: 'Song uploaded successfully' });
     } catch (error) {
       console.error('Database error:', error);
-      
-      if (req.file) {
-        const filePath = path.join(__dirname, UPLOAD_DIR, req.file.filename);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      }
-      
       res.status(500).json({ error: 'Failed to save song: ' + error.message });
     }
   });
 });
 
-// Delete song route
+// Updated Delete song route - now deletes from GridFS
 app.delete('/admin/delete-song/:id', apiRequireAdmin, async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -477,9 +520,12 @@ app.delete('/admin/delete-song/:id', apiRequireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    const filePath = path.join(__dirname, UPLOAD_DIR, song.filename);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Delete file from GridFS
+    try {
+      await gridfsBucket.delete(song.gridfsId);
+    } catch (gridfsError) {
+      console.error('Error deleting from GridFS:', gridfsError);
+      // Continue with song deletion even if GridFS deletion fails
     }
 
     await Song.findByIdAndDelete(req.params.id);
@@ -490,7 +536,7 @@ app.delete('/admin/delete-song/:id', apiRequireAdmin, async (req, res) => {
   }
 });
 
-// Get song details route
+// Get song details route (unchanged)
 app.get('/api/song/:id', apiRequireAuth, async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -498,6 +544,7 @@ app.get('/api/song/:id', apiRequireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Song not found' });
     }
 
+    // Check if user has access to this song based on plan
     let hasAccess = false;
     if (song.plan === 'both') {
       hasAccess = true;
@@ -518,7 +565,7 @@ app.get('/api/song/:id', apiRequireAuth, async (req, res) => {
   }
 });
 
-// Stream audio route
+// Updated Stream audio route - now streams from GridFS
 app.get('/stream/:id', apiRequireAuth, async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -526,36 +573,64 @@ app.get('/stream/:id', apiRequireAuth, async (req, res) => {
       return res.status(404).send('Song not found');
     }
 
-    const filePath = path.join(__dirname, UPLOAD_DIR, song.filename);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).send('File not found');
+    // Check access permissions
+    let hasAccess = false;
+    if (song.plan === 'both') {
+      hasAccess = true;
+    } else if (req.session.user.plan === 'abundance' && (song.plan === 'abundance' || song.plan === 'both')) {
+      hasAccess = true;
+    } else if (req.session.user.plan === 'normal' && (song.plan === 'normal' || song.plan === 'both')) {
+      hasAccess = true;
     }
 
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const range = req.headers.range;
+    if (!hasAccess) {
+      return res.status(403).send('Access denied');
+    }
 
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(filePath, { start, end });
-      const head = {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunksize,
-        'Content-Type': 'audio/mpeg',
-      };
-      res.writeHead(206, head);
-      file.pipe(res);
-    } else {
-      const head = {
-        'Content-Length': fileSize,
-        'Content-Type': 'audio/mpeg',
-      };
-      res.writeHead(200, head);
-      fs.createReadStream(filePath).pipe(res);
+    const range = req.headers.range;
+    
+    try {
+      // Get file info from GridFS
+      const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
+      if (!files || files.length === 0) {
+        return res.status(404).send('File not found in GridFS');
+      }
+      
+      const file = files[0];
+      const fileSize = file.length;
+
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        
+        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
+          start: start,
+          end: end + 1
+        });
+        
+        const head = {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': song.mimeType || 'audio/mpeg',
+        };
+        res.writeHead(206, head);
+        downloadStream.pipe(res);
+      } else {
+        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId);
+        
+        const head = {
+          'Content-Length': fileSize,
+          'Content-Type': song.mimeType || 'audio/mpeg',
+        };
+        res.writeHead(200, head);
+        downloadStream.pipe(res);
+      }
+    } catch (streamError) {
+      console.error('GridFS streaming error:', streamError);
+      res.status(500).send('Error streaming file');
     }
   } catch (error) {
     console.error(error);
@@ -563,18 +638,21 @@ app.get('/stream/:id', apiRequireAuth, async (req, res) => {
   }
 });
 
-// Demo song endpoint
+// Demo song endpoint (unchanged)
 app.get('/api/demo-song', async (req, res) => {
   try {
+    // Get a random song from the database for demo purposes
     const songs = await Song.find({ plan: { $in: ['both', 'normal'] } }).limit(10);
     
     if (songs.length === 0) {
       return res.status(404).json({ error: 'No demo songs available' });
     }
     
+    // Select a random song from available songs
     const randomIndex = Math.floor(Math.random() * songs.length);
     const demoSong = songs[randomIndex];
     
+    // Return basic song info (no sensitive data)
     res.json({
       _id: demoSong._id,
       title: demoSong.title,
@@ -590,7 +668,7 @@ app.get('/api/demo-song', async (req, res) => {
   }
 });
 
-// Demo stream endpoint
+// Updated Demo stream endpoint - now streams from GridFS with limits
 app.get('/demo-stream/:id', async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -598,42 +676,60 @@ app.get('/demo-stream/:id', async (req, res) => {
       return res.status(404).send('Demo song not found');
     }
 
+    // Only allow streaming of 'both' or 'normal' plan songs for demo
     if (song.plan !== 'both' && song.plan !== 'normal') {
       return res.status(403).send('Demo access denied');
     }
 
-    const filePath = path.join(__dirname, UPLOAD_DIR, song.filename);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).send('Demo file not found');
-    }
+    try {
+      // Get file info from GridFS
+      const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
+      if (!files || files.length === 0) {
+        return res.status(404).send('Demo file not found in GridFS');
+      }
+      
+      const file = files[0];
+      const fileSize = file.length;
+      const range = req.headers.range;
 
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const range = req.headers.range;
-    const maxBytes = Math.min(fileSize, fileSize * 0.3);
+      // Limit demo streaming to first 30% of file
+      const maxBytes = Math.min(fileSize, Math.floor(fileSize * 0.3));
 
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = Math.min(parts[1] ? parseInt(parts[1], 10) : maxBytes - 1, maxBytes - 1);
-      const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(filePath, { start, end });
-      const head = {
-        'Content-Range': `bytes ${start}-${end}/${maxBytes}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunksize,
-        'Content-Type': 'audio/mpeg',
-      };
-      res.writeHead(206, head);
-      file.pipe(res);
-    } else {
-      const head = {
-        'Content-Length': maxBytes,
-        'Content-Type': 'audio/mpeg',
-      };
-      res.writeHead(200, head);
-      const readStream = fs.createReadStream(filePath, { start: 0, end: maxBytes - 1 });
-      readStream.pipe(res);
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = Math.min(parts[1] ? parseInt(parts[1], 10) : maxBytes - 1, maxBytes - 1);
+        const chunksize = (end - start) + 1;
+        
+        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
+          start: start,
+          end: end + 1
+        });
+        
+        const head = {
+          'Content-Range': `bytes ${start}-${end}/${maxBytes}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': song.mimeType || 'audio/mpeg',
+        };
+        res.writeHead(206, head);
+        downloadStream.pipe(res);
+      } else {
+        const downloadStream = gridfsBucket.openDownloadStream(song.gridfsId, {
+          start: 0,
+          end: maxBytes
+        });
+        
+        const head = {
+          'Content-Length': maxBytes,
+          'Content-Type': song.mimeType || 'audio/mpeg',
+        };
+        res.writeHead(200, head);
+        downloadStream.pipe(res);
+      }
+    } catch (streamError) {
+      console.error('Demo GridFS streaming error:', streamError);
+      res.status(500).send('Error streaming demo file');
     }
   } catch (error) {
     console.error('Demo stream error:', error);
@@ -653,13 +749,17 @@ app.get('/admin/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`SoniqAI server running on port ${PORT}`);
-  console.log(`Environment: ${NODE_ENV}`);
-  console.log(`MongoDB URI: ${MONGODB_URI}`);
-  console.log(`Upload Directory: ${UPLOAD_DIR}`);
-  console.log(`Admin Password: ${ADMIN_PASSWORD}`);
-});
+// Initialize UUID and start server
+(async () => {
+  const uuid = await import('uuid');
+  uuidv4 = uuid.v4;
+  
+  app.listen(PORT, () => {
+    console.log(`SoniqAI server running on port ${PORT}`);
+    console.log(`Environment: ${NODE_ENV}`);
+    console.log(`MongoDB URI: ${MONGODB_URI}`);
+    console.log(`Upload Directory: ${UPLOAD_DIR} (GridFS enabled)`);
+  });
+})();
 
-
+const ADMIN_PASSWORD = 'SONIQAIBETTERTHANSPOTIFY';
