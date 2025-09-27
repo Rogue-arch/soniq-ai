@@ -22,7 +22,7 @@ const app = express();
 // Environment Variables with defaults
 const {
   PORT = 3000,
-  MONGODB_URI = 'mongodb+srv://vihaansingh1787:6L6jqMLG3CTkN3x@cluster0.n4mvsb7.mongodb.net/',
+  MONGODB_URI = 'mongodb://localhost:27017/soniqai',
   SESSION_SECRET = 'soniqai-secret-key-2024',
   ADMIN_PASSWORD = 'admin123',
   NODE_ENV = 'development',
@@ -208,8 +208,9 @@ const uploadToGridFS = (buffer, filename, originalName, mimeType) => {
     });
 
     uploadStream.on('error', reject);
-    uploadStream.on('finish', (file) => {
-      resolve(file._id);
+    uploadStream.on('finish', () => {
+      // The uploadStream object contains the file ID after finish
+      resolve(uploadStream.id);
     });
 
     // Write buffer to GridFS
@@ -888,5 +889,4 @@ app.get('/admin/logout', (req, res) => {
   });
 })();
 
-
-
+const ADMIN_PASSWORD = 'SONIQAIBETTERTHANSPOTIFY';
