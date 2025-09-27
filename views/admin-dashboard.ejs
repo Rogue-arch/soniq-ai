@@ -229,6 +229,41 @@
             display: block;
         }
 
+        /* Upload Toggle */
+        .upload-toggle {
+            display: flex;
+            gap: 4px;
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+
+        .toggle-btn {
+            background: transparent;
+            border: none;
+            color: var(--gray-light);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            font-weight: 500;
+            flex: 1;
+            text-align: center;
+        }
+
+        .toggle-btn.active {
+            background: var(--gold-primary);
+            color: var(--black-rich);
+        }
+
+        .toggle-btn:hover:not(.active) {
+            background: var(--surface-glass-hover);
+            color: var(--white-pure);
+        }
+
         /* Cards */
         .card {
             background: var(--surface-glass-strong);
@@ -379,6 +414,123 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+        }
+
+        /* Upload Mode Specific Styles */
+        .upload-mode {
+            display: none;
+        }
+
+        .upload-mode.active {
+            display: block;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            background: var(--surface-glass);
+            border-radius: 6px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--gold-primary), var(--gold-accent));
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            color: var(--gray-light);
+            text-align: center;
+        }
+
+        /* Upload Results */
+        .upload-results {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .upload-results.active {
+            display: block;
+        }
+
+        .result-summary {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .result-stat {
+            flex: 1;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .result-stat.success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .result-stat.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .result-number {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: var(--gray-light);
+        }
+
+        .result-details {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-item.success {
+            background: rgba(34, 197, 94, 0.05);
+            color: var(--success-color);
+        }
+
+        .result-item.error {
+            background: rgba(239, 68, 68, 0.05);
+            color: var(--error-color);
         }
 
         /* Lists */
@@ -576,6 +728,11 @@
                 align-items: flex-start;
                 gap: 12px;
             }
+
+            .result-summary {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -724,63 +881,136 @@
 
             <!-- Upload Tab -->
             <div class="tab-content" id="upload-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Upload New Music</h3>
-                    </div>
-                    
-                    <form id="songForm" onsubmit="uploadSong(event)" enctype="multipart/form-data">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label class="form-label" for="songTitle">Track Title *</label>
-                                <input type="text" id="songTitle" name="title" class="form-input" placeholder="Enter track title" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="songArtist">Artist *</label>
-                                <input type="text" id="songArtist" name="artist" class="form-input" placeholder="Enter artist name" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="songAlbum">Album</label>
-                                <input type="text" id="songAlbum" name="album" class="form-input" placeholder="Enter album name">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="songDuration">Duration</label>
-                                <input type="text" id="songDuration" name="duration" class="form-input" placeholder="e.g., 3:45">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="songGenre">Genre</label>
-                                <input type="text" id="songGenre" name="genre" class="form-input" placeholder="e.g., Manifestation, Ambient">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="songPlan">Access Plan *</label>
-                                <select id="songPlan" name="plan" class="form-select" required>
-                                    <option value="both">Both Plans - Available to all users</option>
-                                    <option value="normal">Normal Only - Standard plan users</option>
-                                    <option value="abundance">Abundance Only - Premium plan users</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group full-width">
-                                <label class="form-label" for="songDescription">Description</label>
-                                <textarea id="songDescription" name="description" class="form-textarea" placeholder="Describe the manifestation properties and benefits of this track"></textarea>
-                            </div>
-                            
-                            <div class="form-group full-width">
-                                <label class="form-label" for="audioFile">Audio File *</label>
-                                <div class="file-input-wrapper">
-                                    <input type="file" id="audioFile" name="audioFile" class="file-input" accept=".mp3,.wav,.flac,.m4a,.aac" required>
-                                    <label for="audioFile" class="file-input-label" id="fileLabel">Choose audio file (MP3, WAV, FLAC, M4A, AAC)</label>
-                                </div>
-                            </div>
+                <!-- Upload Mode Toggle -->
+                <div class="upload-toggle">
+                    <button class="toggle-btn active" onclick="switchUploadMode('single')">Single Upload</button>
+                    <button class="toggle-btn" onclick="switchUploadMode('mass')">Mass Upload</button>
+                </div>
+
+                <!-- Single Upload Mode -->
+                <div class="upload-mode active" id="single-upload">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Upload Single Track</h3>
                         </div>
                         
-                        <button type="submit" class="form-submit" id="uploadBtn">Upload Track</button>
-                    </form>
+                        <form id="songForm" onsubmit="uploadSong(event)" enctype="multipart/form-data">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label" for="songTitle">Track Title *</label>
+                                    <input type="text" id="songTitle" name="title" class="form-input" placeholder="Enter track title" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="songArtist">Artist *</label>
+                                    <input type="text" id="songArtist" name="artist" class="form-input" placeholder="Enter artist name" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="songAlbum">Album</label>
+                                    <input type="text" id="songAlbum" name="album" class="form-input" placeholder="Enter album name">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="songDuration">Duration</label>
+                                    <input type="text" id="songDuration" name="duration" class="form-input" placeholder="e.g., 3:45">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="songGenre">Genre</label>
+                                    <input type="text" id="songGenre" name="genre" class="form-input" placeholder="e.g., Manifestation, Ambient">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="songPlan">Access Plan *</label>
+                                    <select id="songPlan" name="plan" class="form-select" required>
+                                        <option value="both">Both Plans - Available to all users</option>
+                                        <option value="normal">Normal Only - Standard plan users</option>
+                                        <option value="abundance">Abundance Only - Premium plan users</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group full-width">
+                                    <label class="form-label" for="songDescription">Description</label>
+                                    <textarea id="songDescription" name="description" class="form-textarea" placeholder="Describe the manifestation properties and benefits of this track"></textarea>
+                                </div>
+                                
+                                <div class="form-group full-width">
+                                    <label class="form-label" for="audioFile">Audio File *</label>
+                                    <div class="file-input-wrapper">
+                                        <input type="file" id="audioFile" name="audioFile" class="file-input" accept=".mp3,.wav,.flac,.m4a,.aac" required>
+                                        <label for="audioFile" class="file-input-label" id="fileLabel">Choose audio file (MP3, WAV, FLAC, M4A, AAC)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="form-submit" id="uploadBtn">Upload Track</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Mass Upload Mode -->
+                <div class="upload-mode" id="mass-upload">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Mass Upload Tracks</h3>
+                        </div>
+                        
+                        <form id="massUploadForm" onsubmit="massUploadSongs(event)" enctype="multipart/form-data">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label" for="massArtist">Artist *</label>
+                                    <input type="text" id="massArtist" name="artist" class="form-input" placeholder="Enter artist name (applied to all files)" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="massPlan">Access Plan *</label>
+                                    <select id="massPlan" name="plan" class="form-select" required>
+                                        <option value="both">Both Plans - Available to all users</option>
+                                        <option value="normal">Normal Only - Standard plan users</option>
+                                        <option value="abundance">Abundance Only - Premium plan users</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group full-width">
+                                    <label class="form-label" for="massAudioFiles">Audio Files *</label>
+                                    <div class="file-input-wrapper">
+                                        <input type="file" id="massAudioFiles" name="audioFiles" class="file-input" accept=".mp3,.wav,.flac,.m4a,.aac" multiple required>
+                                        <label for="massAudioFiles" class="file-input-label" id="massFileLabel">Choose multiple audio files (MP3, WAV, FLAC, M4A, AAC)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="message" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: var(--info-color); margin-bottom: 20px;">
+                                <strong>Mass Upload Info:</strong> Song titles will be extracted from filenames. Descriptions will be auto-generated as "{filename} by {artist}". You can upload up to 50 files at once.
+                            </div>
+                            
+                            <button type="submit" class="form-submit" id="massUploadBtn">Upload All Tracks</button>
+                        </form>
+
+                        <!-- Progress Container -->
+                        <div class="progress-container" id="massProgressContainer">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="massProgressFill"></div>
+                            </div>
+                            <div class="progress-text" id="massProgressText">Uploading... 0 of 0 files</div>
+                        </div>
+
+                        <!-- Upload Results -->
+                        <div class="upload-results" id="massUploadResults">
+                            <div class="result-summary">
+                                <div class="result-stat success">
+                                    <div class="result-number" style="color: var(--success-color);" id="successCount">0</div>
+                                    <div class="result-label">Successful</div>
+                                </div>
+                                <div class="result-stat error">
+                                    <div class="result-number" style="color: var(--error-color);" id="errorCount">0</div>
+                                    <div class="result-label">Failed</div>
+                                </div>
+                            </div>
+                            <div class="result-details" id="resultDetails"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -789,13 +1019,20 @@
     <script>
         // Tab switching
         function switchTab(tabName) {
-            // Remove active class from all tabs and content
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            // Add active class to selected tab and content
             event.target.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // Upload mode switching
+        function switchUploadMode(mode) {
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.upload-mode').forEach(upload => upload.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(mode + '-upload').classList.add('active');
         }
 
         // Generate access code
@@ -834,7 +1071,7 @@
             }
         }
 
-        // Upload song
+        // Upload single song
         async function uploadSong(event) {
             event.preventDefault();
             
@@ -842,27 +1079,7 @@
             const formData = new FormData(form);
             const submitBtn = form.querySelector('.form-submit');
             
-            // Validate file before upload
-            const fileInput = document.getElementById('audioFile');
-            if (!fileInput.files.length) {
-                showMessage('Please select an audio file', 'error');
-                return;
-            }
-            
-            const file = fileInput.files[0];
-            const maxSize = 50 * 1024 * 1024; // 50MB
-            
-            if (file.size > maxSize) {
-                showMessage('File size must be less than 50MB', 'error');
-                return;
-            }
-            
-            // Check file extension
-            const allowedExtensions = /\.(mp3|wav|flac|m4a|aac)$/i;
-            if (!allowedExtensions.test(file.name)) {
-                showMessage('Only audio files are allowed (MP3, WAV, FLAC, M4A, AAC)', 'error');
-                return;
-            }
+            if (!validateFile(document.getElementById('audioFile'))) return;
             
             submitBtn.disabled = true;
             submitBtn.textContent = 'Uploading...';
@@ -872,11 +1089,6 @@
                     method: 'POST',
                     body: formData
                 });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Upload failed: ${response.status} ${errorText}`);
-                }
                 
                 const result = await response.json();
                 
@@ -889,12 +1101,170 @@
                     showMessage('Error uploading song: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (error) {
-                console.error('Upload error:', error);
                 showMessage('Upload error: ' + error.message, 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Upload Track';
             }
+        }
+
+        // Mass upload songs
+        async function massUploadSongs(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('.form-submit');
+            const files = document.getElementById('massAudioFiles').files;
+            
+            if (!validateFiles(files)) return;
+            
+            // Show progress container
+            const progressContainer = document.getElementById('massProgressContainer');
+            const resultsContainer = document.getElementById('massUploadResults');
+            const progressFill = document.getElementById('massProgressFill');
+            const progressText = document.getElementById('massProgressText');
+            
+            progressContainer.classList.add('active');
+            resultsContainer.classList.remove('active');
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+            
+            progressText.textContent = `Preparing to upload ${files.length} files...`;
+            
+            try {
+                const response = await fetch('/admin/mass-upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                // Update progress to complete
+                progressFill.style.width = '100%';
+                progressText.textContent = `Upload complete: ${files.length} files processed`;
+                
+                // Hide progress, show results
+                setTimeout(() => {
+                    progressContainer.classList.remove('active');
+                    showMassUploadResults(result);
+                }, 1000);
+                
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    form.reset();
+                    document.getElementById('massFileLabel').textContent = 'Choose multiple audio files (MP3, WAV, FLAC, M4A, AAC)';
+                    setTimeout(() => location.reload(), 3000);
+                } else {
+                    showMessage('Mass upload error: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                progressContainer.classList.remove('active');
+                showMessage('Mass upload error: ' + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload All Tracks';
+            }
+        }
+
+        // Show mass upload results
+        function showMassUploadResults(result) {
+            const resultsContainer = document.getElementById('massUploadResults');
+            const successCount = document.getElementById('successCount');
+            const errorCount = document.getElementById('errorCount');
+            const resultDetails = document.getElementById('resultDetails');
+            
+            if (result.results) {
+                successCount.textContent = result.results.summary.successful;
+                errorCount.textContent = result.results.summary.failed;
+                
+                let detailsHTML = '';
+                
+                // Show successful uploads
+                if (result.results.successful && result.results.successful.length > 0) {
+                    result.results.successful.forEach(item => {
+                        detailsHTML += `
+                            <div class="result-item success">
+                                <span>${item.filename} → ${item.title}</span>
+                                <span>✓</span>
+                            </div>
+                        `;
+                    });
+                }
+                
+                // Show failed uploads
+                if (result.results.errors && result.results.errors.length > 0) {
+                    result.results.errors.forEach(item => {
+                        detailsHTML += `
+                            <div class="result-item error">
+                                <span>${item.filename}</span>
+                                <span title="${item.error}">✗</span>
+                            </div>
+                        `;
+                    });
+                }
+                
+                resultDetails.innerHTML = detailsHTML;
+            }
+            
+            resultsContainer.classList.add('active');
+        }
+
+        // Validate single file
+        function validateFile(fileInput) {
+            if (!fileInput.files.length) {
+                showMessage('Please select an audio file', 'error');
+                return false;
+            }
+            
+            const file = fileInput.files[0];
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            
+            if (file.size > maxSize) {
+                showMessage('File size must be less than 50MB', 'error');
+                return false;
+            }
+            
+            const allowedExtensions = /\.(mp3|wav|flac|m4a|aac)$/i;
+            if (!allowedExtensions.test(file.name)) {
+                showMessage('Only audio files are allowed (MP3, WAV, FLAC, M4A, AAC)', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Validate multiple files
+        function validateFiles(files) {
+            if (!files || files.length === 0) {
+                showMessage('Please select audio files for mass upload', 'error');
+                return false;
+            }
+            
+            if (files.length > 50) {
+                showMessage('Maximum 50 files allowed for mass upload', 'error');
+                return false;
+            }
+            
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            const allowedExtensions = /\.(mp3|wav|flac|m4a|aac)$/i;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                if (file.size > maxSize) {
+                    showMessage(`File "${file.name}" is too large. Maximum size is 50MB.`, 'error');
+                    return false;
+                }
+                
+                if (!allowedExtensions.test(file.name)) {
+                    showMessage(`File "${file.name}" is not a valid audio file. Only MP3, WAV, FLAC, M4A, AAC are allowed.`, 'error');
+                    return false;
+                }
+            }
+            
+            return true;
         }
 
         // Delete song
@@ -921,36 +1291,13 @@
             }
         }
 
-        // Show detailed code information
-        function showCodeDetails(code) {
-            const cleanCode = code.trim();
-            const details = `
-Code: ${cleanCode}
-Length: ${cleanCode.length} characters
-Characters: ${cleanCode.split('').join(' ')}
-Valid format: ${/^[A-Z0-9]+$/.test(cleanCode) ? 'Yes' : 'No'}
-            `.trim();
-            
-            alert(details);
-            console.log('Code details:', {
-                original: code,
-                cleaned: cleanCode,
-                length: cleanCode.length,
-                chars: cleanCode.split('')
-            });
-        }
-
         // Copy code to clipboard
         async function copyCode(code) {
             try {
-                // Trim any whitespace that might be added
                 const cleanCode = code.trim();
-                console.log('Copying code:', cleanCode, 'Length:', cleanCode.length);
-                
                 await navigator.clipboard.writeText(cleanCode);
-                showMessage(`Code copied: ${cleanCode} (${cleanCode.length} characters)`, 'success');
+                showMessage(`Code copied: ${cleanCode}`, 'success');
             } catch (error) {
-                // Fallback for older browsers
                 const cleanCode = code.trim();
                 const textArea = document.createElement('textarea');
                 textArea.value = cleanCode;
@@ -958,17 +1305,26 @@ Valid format: ${/^[A-Z0-9]+$/.test(cleanCode) ? 'Yes' : 'No'}
                 textArea.style.opacity = '0';
                 document.body.appendChild(textArea);
                 textArea.select();
-                textArea.setSelectionRange(0, 99999);
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
-                showMessage(`Code copied: ${cleanCode} (${cleanCode.length} characters)`, 'success');
+                showMessage(`Code copied: ${cleanCode}`, 'success');
             }
+        }
+
+        // Show code details
+        function showCodeDetails(code) {
+            const cleanCode = code.trim();
+            const details = `Code: ${cleanCode}\nLength: ${cleanCode.length} characters\nValid format: ${/^[A-Z0-9]+$/.test(cleanCode) ? 'Yes' : 'No'}`;
+            alert(details);
         }
 
         // Show message
         function showMessage(text, type) {
-            // Remove existing messages
-            document.querySelectorAll('.message').forEach(msg => msg.remove());
+            document.querySelectorAll('.message').forEach(msg => {
+                if (!msg.querySelector('strong')) { // Don't remove info messages
+                    msg.remove();
+                }
+            });
             
             const message = document.createElement('div');
             message.className = `message message-${type}`;
@@ -977,7 +1333,6 @@ Valid format: ${/^[A-Z0-9]+$/.test(cleanCode) ? 'Yes' : 'No'}
             const container = document.querySelector('.main-container');
             container.insertBefore(message, container.firstChild);
             
-            // Auto remove after 5 seconds
             setTimeout(() => {
                 if (message.parentNode) {
                     message.remove();
@@ -985,7 +1340,7 @@ Valid format: ${/^[A-Z0-9]+$/.test(cleanCode) ? 'Yes' : 'No'}
             }, 5000);
         }
 
-        // File input handling
+        // File input handlers
         document.getElementById('audioFile').addEventListener('change', function(e) {
             const label = document.getElementById('fileLabel');
             if (e.target.files.length > 0) {
@@ -996,32 +1351,19 @@ Valid format: ${/^[A-Z0-9]+$/.test(cleanCode) ? 'Yes' : 'No'}
             }
         });
 
-        // Form validation
-        document.getElementById('songForm').addEventListener('submit', function(e) {
-            const fileInput = document.getElementById('audioFile');
-            if (!fileInput.files.length) {
-                e.preventDefault();
-                showMessage('Please select an audio file', 'error');
-                return;
-            }
-            
-            const file = fileInput.files[0];
-            const maxSize = 50 * 1024 * 1024; // 50MB
-            
-            if (file.size > maxSize) {
-                e.preventDefault();
-                showMessage('File size must be less than 50MB', 'error');
-                return;
+        document.getElementById('massAudioFiles').addEventListener('change', function(e) {
+            const label = document.getElementById('massFileLabel');
+            if (e.target.files.length > 0) {
+                const totalSize = Array.from(e.target.files).reduce((sum, file) => sum + file.size, 0);
+                label.textContent = `Selected: ${e.target.files.length} files (${(totalSize / 1024 / 1024).toFixed(1)} MB total)`;
+            } else {
+                label.textContent = 'Choose multiple audio files (MP3, WAV, FLAC, M4A, AAC)';
             }
         });
 
         // Initialize
-        console.log('Admin dashboard loaded');
+        console.log('Admin dashboard loaded with mass upload support');
         console.log(`Managing ${<%= songs.length %>} songs and ${<%= codes.length %>} active codes`);
-        
-        // Debug: Log all codes on page load
-        const codes = <%- JSON.stringify(codes.map(c => ({ code: c.code, length: c.code.length }))) %>;
-        console.log('All codes with lengths:', codes);
     </script>
 </body>
 </html>
