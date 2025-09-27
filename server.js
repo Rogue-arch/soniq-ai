@@ -889,4 +889,3 @@ app.get('/admin/logout', (req, res) => {
   });
 })();
 
-const ADMIN_PASSWORD = 'SONIQAIBETTERTHANSPOTIFY';
