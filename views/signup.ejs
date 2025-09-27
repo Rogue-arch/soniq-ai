@@ -163,45 +163,6 @@
             margin-top: 4px;
         }
 
-        .plan-selector {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 8px;
-        }
-
-        .plan-option {
-            background: var(--surface-glass);
-            border: 1px solid var(--border-glass);
-            border-radius: 12px;
-            padding: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .plan-option:hover {
-            background: var(--surface-glass-hover);
-            border-color: var(--border-glass-hover);
-        }
-
-        .plan-option.selected {
-            border-color: var(--gold-primary);
-            background: rgba(201, 169, 97, 0.1);
-        }
-
-        .plan-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--white-pure);
-            margin-bottom: 4px;
-        }
-
-        .plan-description {
-            font-size: 12px;
-            color: var(--gray-light);
-        }
-
         .auth-button {
             background: linear-gradient(135deg, var(--gold-primary), var(--gold-accent));
             color: var(--black-rich);
@@ -225,6 +186,11 @@
         .auth-button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-button.loading {
+            opacity: 0.8;
             transform: none;
         }
 
@@ -282,10 +248,6 @@
                 margin: 20px;
                 padding: 32px 24px;
             }
-            
-            .plan-selector {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
@@ -309,7 +271,7 @@
             </div>
         <% } %>
 
-        <form class="auth-form" method="POST" action="/signup">
+        <form class="auth-form" method="POST" action="/signup" id="signupForm">
             <div class="form-group">
                 <label class="form-label" for="name">Full Name</label>
                 <input type="text" id="name" name="name" class="form-input" placeholder="Enter your full name" required>
@@ -332,7 +294,7 @@
                 <div class="form-help">12-digit access code provided by administrator</div>
             </div>
 
-            <button type="submit" class="auth-button">Create Account</button>
+            <button type="submit" class="auth-button" id="submitBtn">Create Account</button>
         </form>
 
         <div class="auth-link">
@@ -346,32 +308,18 @@
             e.target.value = e.target.value.toUpperCase();
         });
 
-        // Form validation
-        document.querySelector('.auth-form').addEventListener('submit', function(e) {
-            const password = document.getElementById('password').value;
-            const oneTimeCode = document.getElementById('oneTimeCode').value;
-
-            if (password.length < 6) {
-                e.preventDefault();
-                alert('Password must be at least 6 characters long');
-                return;
-            }
-
-            if (oneTimeCode.length !== 12) {
-                e.preventDefault();
-                alert('Access code must be exactly 12 characters. Current length: ' + oneTimeCode.length);
-                return;
-            }
-
-            // Check if code contains only alphanumeric characters
-            if (!/^[A-Z0-9]{12}$/.test(oneTimeCode)) {
-                e.preventDefault();
-                alert('Access code must contain only uppercase letters and numbers');
-                return;
-            }
+        // Remove all form validation that might prevent submission
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            console.log('Signup form submitted');
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.textContent = 'Creating Account...';
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            
+            // Don't prevent default - let the form submit naturally
         });
 
-        // Smooth form animations
+        // Simple focus animations only
         const inputs = document.querySelectorAll('.form-input');
         inputs.forEach(input => {
             input.addEventListener('focus', function() {
