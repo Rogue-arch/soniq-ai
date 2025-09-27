@@ -450,7 +450,7 @@ app.post('/admin/generate-code', apiRequireAdmin, async (req, res) => {
   }
 });
 
-// Updated Add song route - now uses GridFS
+// Updated Add song route - now uses GridFS (single upload)
 app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
   upload.single('audioFile')(req, res, async (err) => {
     if (err) {
@@ -508,6 +508,132 @@ app.post('/admin/add-song', apiRequireAdmin, (req, res) => {
     } catch (error) {
       console.error('Database error:', error);
       res.status(500).json({ error: 'Failed to save song: ' + error.message });
+    }
+  });
+});
+
+// New Mass upload route - uses GridFS
+app.post('/admin/mass-upload', apiRequireAdmin, (req, res) => {
+  const uploadMultiple = multer({ 
+    storage: multer.memoryStorage(),
+    fileFilter: (req, file, cb) => {
+      const allowedExtensions = /\.(mp3|wav|flac|m4a|aac)$/i;
+      const allowedMimeTypes = [
+        'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave',
+        'audio/x-wav', 'audio/flac', 'audio/x-flac', 'audio/mp4',
+        'audio/m4a', 'audio/aac', 'audio/x-aac'
+      ];
+      
+      const hasValidExtension = allowedExtensions.test(file.originalname);
+      const hasValidMimeType = allowedMimeTypes.includes(file.mimetype);
+      
+      if (hasValidExtension || hasValidMimeType) {
+        return cb(null, true);
+      } else {
+        cb(new Error('Only audio files are allowed (MP3, WAV, FLAC, M4A, AAC)'));
+      }
+    },
+    limits: { fileSize: parseInt(MAX_FILE_SIZE) }
+  }).array('audioFiles', 50); // Max 50 files
+
+  uploadMultiple(req, res, async (err) => {
+    if (err) {
+      console.error('Mass upload multer error:', err.message);
+      return res.status(400).json({ error: err.message });
+    }
+    
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: 'No audio files uploaded' });
+      }
+
+      const { artist, plan } = req.body;
+
+      if (!artist) {
+        return res.status(400).json({ error: 'Artist is required for mass upload' });
+      }
+
+      const results = [];
+      const errors = [];
+
+      // Process each file
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        
+        try {
+          // Extract title from filename (remove extension)
+          const title = path.parse(file.originalname).name;
+          
+          // Generate unique filename
+          const uniqueFilename = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+
+          console.log(`Uploading file ${i + 1}/${req.files.length} to GridFS:`, {
+            filename: uniqueFilename,
+            originalname: file.originalname,
+            title: title,
+            size: file.size,
+            mimetype: file.mimetype
+          });
+
+          // Upload file to GridFS
+          const gridfsId = await uploadToGridFS(
+            file.buffer, 
+            uniqueFilename, 
+            file.originalname, 
+            file.mimetype
+          );
+
+          // Create description
+          const description = `${title} by ${artist.trim()}`;
+
+          const song = new Song({
+            title: title.trim(),
+            artist: artist.trim(),
+            plan: plan || 'both',
+            description: description,
+            filename: uniqueFilename,
+            gridfsId: gridfsId,
+            originalName: file.originalname,
+            mimeType: file.mimetype,
+            fileSize: file.size
+          });
+
+          await song.save();
+          results.push({
+            filename: file.originalname,
+            title: title,
+            status: 'success'
+          });
+          
+          console.log(`Song saved: ${title} by ${artist}`);
+        } catch (fileError) {
+          console.error(`Error processing ${file.originalname}:`, fileError);
+          errors.push({
+            filename: file.originalname,
+            error: fileError.message
+          });
+        }
+      }
+
+      const successCount = results.length;
+      const errorCount = errors.length;
+      
+      res.json({
+        success: true,
+        message: `Mass upload completed: ${successCount} successful, ${errorCount} errors`,
+        results: {
+          successful: results,
+          errors: errors,
+          summary: {
+            total: req.files.length,
+            successful: successCount,
+            failed: errorCount
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Mass upload error:', error);
+      res.status(500).json({ error: 'Failed to complete mass upload: ' + error.message });
     }
   });
 });
