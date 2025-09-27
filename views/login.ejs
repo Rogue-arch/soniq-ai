@@ -183,6 +183,11 @@
             transform: none;
         }
 
+        .auth-button.loading {
+            opacity: 0.8;
+            transform: none;
+        }
+
         .auth-link {
             text-align: center;
             margin-top: 24px;
@@ -286,7 +291,7 @@
             </div>
         <% } %>
 
-        <form class="auth-form" method="POST" action="/login">
+        <form class="auth-form" method="POST" action="/login" id="loginForm">
             <div class="form-group">
                 <label class="form-label" for="email">Email Address</label>
                 <input type="email" id="email" name="email" class="form-input" placeholder="Enter your email address" required>
@@ -297,7 +302,7 @@
                 <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
             </div>
 
-            <button type="submit" class="auth-button">Sign In</button>
+            <button type="submit" class="auth-button" id="submitBtn">Sign In</button>
         </form>
 
         <div class="auth-link">
@@ -306,7 +311,18 @@
     </div>
 
     <script>
-        // Smooth form animations
+        // Remove all form validation that might prevent submission
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            console.log('Form submitted');
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.textContent = 'Signing In...';
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            
+            // Don't prevent default - let the form submit naturally
+        });
+
+        // Simple focus animations only
         const inputs = document.querySelectorAll('.form-input');
         inputs.forEach(input => {
             input.addEventListener('focus', function() {
@@ -316,18 +332,6 @@
             input.addEventListener('blur', function() {
                 this.parentElement.style.transform = 'translateY(0)';
             });
-        });
-
-        // Form validation
-        document.querySelector('.auth-form').addEventListener('submit', function(e) {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            if (!email || !password) {
-                e.preventDefault();
-                alert('Please fill in all fields');
-                return;
-            }
         });
     </script>
 </body>
