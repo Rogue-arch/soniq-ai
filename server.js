@@ -774,7 +774,7 @@ app.get('/stream/:id', apiRequireAuth, async (req, res) => {
       // Get file info from GridFS
       const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
       if (!files || files.length === 0) {
-        return res.status(404).send('Demo file not found in GridFS');
+        return res.status(404).send('File not found in GridFS');
       }
       
       const file = files[0];
@@ -828,14 +828,22 @@ app.get('/stream/:id', apiRequireAuth, async (req, res) => {
 
 // Logout route
 app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/');
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+    }
+    res.redirect('/');
+  });
 });
 
 // Admin logout route
 app.get('/admin/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/');
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Admin logout error:', err);
+    }
+    res.redirect('/');
+  });
 });
 
 // Initialize server
@@ -844,12 +852,7 @@ app.listen(PORT, () => {
   console.log(`Environment: ${NODE_ENV}`);
   console.log(`MongoDB URI: ${MONGODB_URI}`);
   console.log(`Upload Directory: ${UPLOAD_DIR} (GridFS enabled)`);
-}); === 0) {
-        return res.status(404).send('File not found in GridFS');
-      }
-      
-      const file = files[0];
-      const fileSize = file.length;
+});;
 
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
@@ -936,4 +939,9 @@ app.get('/demo-stream/:id', async (req, res) => {
     try {
       // Get file info from GridFS
       const files = await gridfsBucket.find({ _id: song.gridfsId }).toArray();
-      if (!files || files.length
+      if (!files || files.length === 0) {
+        return res.status(404).send('Demo file not found in GridFS');
+      }
+      
+      const file = files[0];
+      const fileSize = file.length
