@@ -298,3 +298,27 @@
     </div>
 
     <script>
+        // Auto-uppercase the access code
+        document.getElementById('oneTimeCode').addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+        });
+
+        // Focus on first input
+        document.getElementById('name').focus();
+
+        // Simple form animations
+        const inputs = document.querySelectorAll('.form-input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'translateY(-2px)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'translateY(0)';
+            });
+        });
+
+        // No client-side validation or interference - let the form submit naturally
+    </script>
+</body>
+</html>
