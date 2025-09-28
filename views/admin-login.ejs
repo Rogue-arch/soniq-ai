@@ -334,7 +334,7 @@
             </div>
         <% } %>
 
-        <form class="auth-form" method="POST" action="/admin-login">
+        <form class="auth-form" method="POST" action="/admin-login" novalidate>
             <div class="form-group">
                 <label class="form-label" for="password">Admin Password</label>
                 <input type="password" id="password" name="password" class="form-input" placeholder="Enter admin password" required autocomplete="current-password">
@@ -367,38 +367,10 @@
     </div>
 
     <script>
-        // Security enhancements
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
-                e.preventDefault();
-            }
-        });
-
-        // Form validation
-        document.querySelector('.auth-form').addEventListener('submit', function(e) {
-            const password = document.getElementById('password').value;
-
-            if (!password.trim()) {
-                e.preventDefault();
-                alert('Please enter the admin password');
-                return;
-            }
-
-            if (password.length < 3) {
-                e.preventDefault();
-                alert('Invalid password format');
-                return;
-            }
-        });
-
         // Focus on password field
         document.getElementById('password').focus();
 
-        // Smooth animations
+        // Simple form animations
         const inputs = document.querySelectorAll('.form-input');
         inputs.forEach(input => {
             input.addEventListener('focus', function() {
@@ -409,6 +381,8 @@
                 this.parentElement.style.transform = 'translateY(0)';
             });
         });
+
+        // No client-side validation or interference - let the form submit naturally
     </script>
 </body>
 </html>
