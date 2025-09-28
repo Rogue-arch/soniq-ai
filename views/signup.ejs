@@ -189,11 +189,6 @@
             transform: none;
         }
 
-        .auth-button.loading {
-            opacity: 0.8;
-            transform: none;
-        }
-
         .auth-link {
             text-align: center;
             margin-top: 24px;
@@ -271,30 +266,30 @@
             </div>
         <% } %>
 
-        <form class="auth-form" method="POST" action="/signup" id="signupForm">
+        <form class="auth-form" method="POST" action="/signup" novalidate>
             <div class="form-group">
                 <label class="form-label" for="name">Full Name</label>
-                <input type="text" id="name" name="name" class="form-input" placeholder="Enter your full name" required>
+                <input type="text" id="name" name="name" class="form-input" placeholder="Enter your full name" autocomplete="name">
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="email">Email Address</label>
-                <input type="email" id="email" name="email" class="form-input" placeholder="Enter your email address" required>
+                <input type="email" id="email" name="email" class="form-input" placeholder="Enter your email address" required autocomplete="email">
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="password">Password</label>
-                <input type="password" id="password" name="password" class="form-input" placeholder="Create a strong password" required minlength="6">
+                <input type="password" id="password" name="password" class="form-input" placeholder="Create a strong password" required minlength="6" autocomplete="new-password">
                 <div class="form-help">Minimum 6 characters</div>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="oneTimeCode">Access Code</label>
-                <input type="text" id="oneTimeCode" name="oneTimeCode" class="form-input" placeholder="Enter your one-time access code" required maxlength="12" style="text-transform: uppercase;">
+                <input type="text" id="oneTimeCode" name="oneTimeCode" class="form-input" placeholder="Enter your one-time access code" required maxlength="12" autocomplete="off">
                 <div class="form-help">12-digit access code provided by administrator</div>
             </div>
 
-            <button type="submit" class="auth-button" id="submitBtn">Create Account</button>
+            <button type="submit" class="auth-button">Create Account</button>
         </form>
 
         <div class="auth-link">
@@ -303,33 +298,3 @@
     </div>
 
     <script>
-        // Auto-uppercase the access code
-        document.getElementById('oneTimeCode').addEventListener('input', function(e) {
-            e.target.value = e.target.value.toUpperCase();
-        });
-
-        // Remove all form validation that might prevent submission
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            console.log('Signup form submitted');
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.textContent = 'Creating Account...';
-            submitBtn.classList.add('loading');
-            submitBtn.disabled = true;
-            
-            // Don't prevent default - let the form submit naturally
-        });
-
-        // Simple focus animations only
-        const inputs = document.querySelectorAll('.form-input');
-        inputs.forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.style.transform = 'translateY(-2px)';
-            });
-            
-            input.addEventListener('blur', function() {
-                this.parentElement.style.transform = 'translateY(0)';
-            });
-        });
-    </script>
-</body>
-</html>
