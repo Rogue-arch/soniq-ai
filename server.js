@@ -48,26 +48,29 @@ mongoose.connection.once('open', () => {
   });
 });
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
-app.use('/uploads', express.static(UPLOAD_DIR));
+// Middleware - FIXED ORDER AND CONFIGURATION
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Session configuration
+// Session configuration - FIXED
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: MONGODB_URI
+    mongoUrl: MONGODB_URI,
+    touchAfter: 24 * 3600 // lazy session update
   }),
   cookie: {
-    secure: NODE_ENV === 'production',
+    secure: false, // Set to true only in production with HTTPS
     httpOnly: true,
     maxAge: parseInt(SESSION_MAX_AGE)
-  }
+  },
+  name: 'soniqai.sid' // Custom session name
 }));
+
+app.use(express.static('public'));
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 // View engine
 app.set('view engine', 'ejs');
@@ -119,14 +122,15 @@ const User = mongoose.model('User', userSchema);
 const Song = mongoose.model('Song', songSchema);
 const OneTimeCode = mongoose.model('OneTimeCode', oneTimeCodeSchema);
 
-// Authentication Middleware
+// Authentication Middleware - FIXED
 const requireAuth = (req, res, next) => {
   console.log('=== REQUIRE AUTH CHECK ===');
+  console.log('Session ID:', req.sessionID);
   console.log('Session exists:', !!req.session);
   console.log('Session user exists:', !!req.session.user);
   console.log('Session user data:', req.session.user);
   
-  if (!req.session.user) {
+  if (!req.session || !req.session.user) {
     console.log('No session user found, redirecting to login');
     return res.redirect('/login');
   }
@@ -136,7 +140,7 @@ const requireAuth = (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
-  if (!req.session.admin) {
+  if (!req.session || !req.session.admin) {
     return res.redirect('/admin-login');
   }
   next();
@@ -144,14 +148,14 @@ const requireAdmin = (req, res, next) => {
 
 // API Auth Check Middleware
 const apiRequireAuth = (req, res, next) => {
-  if (!req.session.user) {
+  if (!req.session || !req.session.user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   next();
 };
 
 const apiRequireAdmin = (req, res, next) => {
-  if (!req.session.admin) {
+  if (!req.session || !req.session.admin) {
     return res.status(401).json({ error: 'Admin authentication required' });
   }
   next();
@@ -269,21 +273,21 @@ app.get('/contact', (req, res) => {
 });
 
 app.get('/signup', (req, res) => {
-  if (req.session.user) {
+  if (req.session && req.session.user) {
     return res.redirect('/dashboard');
   }
   res.render('signup', { error: null });
 });
 
 app.get('/login', (req, res) => {
-  if (req.session.user) {
+  if (req.session && req.session.user) {
     return res.redirect('/dashboard');
   }
   res.render('login', { error: null });
 });
 
 app.get('/admin-login', (req, res) => {
-  if (req.session.admin) {
+  if (req.session && req.session.admin) {
     return res.redirect('/admin-dashboard');
   }
   res.render('admin-login', { error: null });
@@ -291,7 +295,7 @@ app.get('/admin-login', (req, res) => {
 
 // Authentication check API endpoint
 app.get('/api/auth/check', (req, res) => {
-  if (req.session.user) {
+  if (req.session && req.session.user) {
     res.json({
       isAuthenticated: true,
       user: req.session.user
@@ -315,10 +319,11 @@ app.post('/api/auth/logout', (req, res) => {
   });
 });
 
-// Sign up route
+// Sign up route - COMPLETELY FIXED
 app.post('/signup', async (req, res) => {
   console.log('=== SIGNUP ATTEMPT ===');
   console.log('Request body:', req.body);
+  console.log('Session before signup:', req.session);
   
   try {
     const { email, password, oneTimeCode, name } = req.body;
@@ -329,78 +334,100 @@ app.post('/signup', async (req, res) => {
       return res.render('signup', { error: 'All fields are required' });
     }
 
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedCode = oneTimeCode.toUpperCase().trim();
+
     // Check if one-time code exists and is valid
-    const code = await OneTimeCode.findOne({ code: oneTimeCode.toUpperCase(), used: false });
+    const code = await OneTimeCode.findOne({ 
+      code: normalizedCode, 
+      used: false,
+      expiresAt: { $gt: new Date() }
+    });
+    
     if (!code) {
-      console.log('Invalid or expired one-time code');
+      console.log('Invalid or expired one-time code:', normalizedCode);
       return res.render('signup', { error: 'Invalid or expired one-time code' });
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      console.log('User already exists');
-      return res.render('signup', { error: 'User already exists' });
+      console.log('User already exists:', normalizedEmail);
+      return res.render('signup', { error: 'User already exists with this email' });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, parseInt(BCRYPT_ROUNDS));
 
     // Create user
-    const user = new User({
-      email: email.toLowerCase(),
+    const newUser = new User({
+      email: normalizedEmail,
       password: hashedPassword,
-      name: name || '',
+      name: name ? name.trim() : '',
       plan: code.plan
     });
 
-    await user.save();
-    console.log('User created successfully');
+    const savedUser = await newUser.save();
+    console.log('User created successfully:', savedUser._id);
 
     // Mark code as used
     code.used = true;
+    code.usedAt = new Date();
     await code.save();
-    console.log('Code marked as used');
+    console.log('Code marked as used:', normalizedCode);
 
+    // Redirect to login with success message
     console.log('Signup successful, redirecting to login');
-    return res.redirect('/login');
+    return res.redirect('/login?signup=success');
+    
   } catch (error) {
     console.error('Signup error:', error);
+    if (error.code === 11000) {
+      return res.render('signup', { error: 'Email address already registered' });
+    }
     return res.render('signup', { error: 'Server error. Please try again.' });
   }
 });
 
-// Login route
+// Login route - COMPLETELY FIXED
 app.post('/login', async (req, res) => {
   console.log('=== LOGIN ATTEMPT ===');
   console.log('Request body:', req.body);
+  console.log('Session before login:', req.session);
   
   try {
     const { email, password } = req.body;
 
+    // Validate input
     if (!email || !password) {
       console.log('Missing email or password');
       return res.render('login', { error: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find user
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      console.log('User not found');
-      return res.render('login', { error: 'Invalid credentials' });
+      console.log('User not found:', normalizedEmail);
+      return res.render('login', { error: 'Invalid email or password' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      console.log('Password mismatch');
-      return res.render('login', { error: 'Invalid credentials' });
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      console.log('Invalid password for user:', normalizedEmail);
+      return res.render('login', { error: 'Invalid email or password' });
     }
 
     // Generate session ID
-    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    // Set session data BEFORE managing user sessions
+    // Set session data
     req.session.user = {
-      id: user._id,
+      id: user._id.toString(),
       email: user.email,
       name: user.name,
       plan: user.plan
@@ -409,36 +436,40 @@ app.post('/login', async (req, res) => {
 
     console.log('Session data set:', req.session.user);
     
-    // Save session and then redirect
-    req.session.save(async (err) => {
-      if (err) {
-        console.error('Session save error:', err);
+    // Save session explicitly and then redirect
+    req.session.save(async (saveError) => {
+      if (saveError) {
+        console.error('Session save error:', saveError);
         return res.render('login', { error: 'Login failed. Please try again.' });
       }
       
-      console.log('Session saved successfully');
+      console.log('Session saved successfully, session ID:', req.sessionID);
       
       try {
-        // Manage sessions after session is saved
+        // Manage user sessions
         await manageUserSessions(user._id, sessionId);
+        console.log('User sessions managed successfully');
+        
         console.log('Login successful, redirecting to dashboard');
         return res.redirect('/dashboard');
-      } catch (sessionError) {
-        console.error('Session management error:', sessionError);
+      } catch (sessionManageError) {
+        console.error('Session management error:', sessionManageError);
         // Still redirect even if session management fails
         return res.redirect('/dashboard');
       }
     });
+    
   } catch (error) {
     console.error('Login error:', error);
     return res.render('login', { error: 'Server error. Please try again.' });
   }
 });
 
-// Admin login route
+// Admin login route - FIXED
 app.post('/admin-login', async (req, res) => {
   console.log('=== ADMIN LOGIN ATTEMPT ===');
   console.log('Request body:', req.body);
+  console.log('Session before admin login:', req.session);
   
   try {
     const { password } = req.body;
@@ -453,28 +484,35 @@ app.post('/admin-login', async (req, res) => {
       return res.render('admin-login', { error: 'Invalid admin password' });
     }
 
+    // Set admin session
     req.session.admin = true;
+    req.session.adminLoginTime = new Date();
+    
+    console.log('Admin session data set');
     
     // Save session before redirect
-    req.session.save((err) => {
-      if (err) {
-        console.error('Admin session save error:', err);
+    req.session.save((saveError) => {
+      if (saveError) {
+        console.error('Admin session save error:', saveError);
         return res.render('admin-login', { error: 'Login failed. Please try again.' });
       }
+      
+      console.log('Admin session saved successfully, session ID:', req.sessionID);
       console.log('Admin login successful, redirecting to admin dashboard');
       return res.redirect('/admin-dashboard');
     });
+    
   } catch (error) {
     console.error('Admin login error:', error);
     return res.render('admin-login', { error: 'Server error. Please try again.' });
   }
 });
 
-// Dashboard route (protected)
+// Dashboard route (protected) - FIXED
 app.get('/dashboard', requireAuth, async (req, res) => {
   console.log('=== DASHBOARD ACCESS ATTEMPT ===');
   console.log('Session user:', req.session.user);
-  console.log('Session ID:', req.session.id);
+  console.log('Session ID:', req.sessionID);
   
   try {
     let query = {};
