@@ -1000,6 +1000,11 @@ app.get('/admin/logout', (req, res) => {
     res.redirect('/');
   });
 });
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(`User-agent: *
+Allow: /`);
+});
 
 // Initialize server
 app.listen(PORT, () => {
@@ -1008,4 +1013,5 @@ app.listen(PORT, () => {
   console.log(`MongoDB URI: ${MONGODB_URI}`);
   console.log(`Upload Directory: ${UPLOAD_DIR} (GridFS enabled)`);
 });
+
 
