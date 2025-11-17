@@ -14,7 +14,7 @@ const app = express();
 // Environment Variables with defaults
 const {
   PORT = 3000,
-  MONGODB_URI = 'mongodb+srv://vihaansingh1787:6L6jqMLG3CTkN3x@cluster0.n4mvsb7.mongodb.net/',
+  MONGODB_URI = 'mongodb+srv://soniq:soniqai@cluster0.fbddkn9.mongodb.net/',
   SESSION_SECRET = 'soniqai-secret-key-2024',
   ADMIN_PASSWORD = 'theson1qAI@2026private',
   NODE_ENV = 'development',
@@ -1013,5 +1013,6 @@ app.listen(PORT, () => {
   console.log(`MongoDB URI: ${MONGODB_URI}`);
   console.log(`Upload Directory: ${UPLOAD_DIR} (GridFS enabled)`);
 });
+
 
 
